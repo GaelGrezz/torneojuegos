@@ -1,10 +1,13 @@
 const express = require('express');
-const mysql = require('mysql2/promise');
+const morgan = require('morgan');
 var cors = require('cors');
 
 const app = express();
 
+// Middleware
 app.use(cors());
+app.use(morgan('dev'));
+app.use(express.json());
 const port = Number(process.env.PORT) || 3000;
 
 
