@@ -1,6 +1,7 @@
 const express = require('express');
 const morgan = require('morgan');
 var cors = require('cors');
+const pool = require('./config/database');
 
 const app = express();
 
@@ -8,19 +9,12 @@ const app = express();
 app.use(cors());
 app.use(morgan('dev'));
 app.use(express.json());
-const port = Number(process.env.PORT) || 3000;
 
+// DB
+const PORT = process.env.PORT || 3000;
 
-
-const pool = mysql.createPool({
-  host: process.env.DB_HOST || 'localhost',
-  port: Number(process.env.DB_PORT) || 3306,
-  user: process.env.DB_USER || 'root',
-  password: process.env.DB_PASSWORD || '',
-  database: process.env.DB_NAME || 'torneojuegos',
-  waitForConnections: true,
-  connectionLimit: 10,
-  queueLimit: 0
+app.listen(PORT, () => {
+  console.log(`Server running on http://localhost:${PORT}`);
 });
 
 app.use(express.json());
