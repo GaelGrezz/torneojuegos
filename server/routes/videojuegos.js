@@ -1,11 +1,10 @@
 const express = require('express');
-const { asyncHandler, requireFields, callProcedure } = require('./helpers');
+const { asyncHandler, callProcedure } = require('./helpers');
+const { validateVideojuego } = require('../validators/videojuegosValidator');
 
 const router = express.Router();
 
-router.post('/', asyncHandler(async (req, res) => {
-  const missing = requireFields(req.body, ['nombre', 'genero']);
-  if (missing.length) return res.status(400).json({ error: `Campos requeridos: ${missing.join(', ')}` });
+router.post('/', validateVideojuego, asyncHandler(async (req, res) => {
   const rows = await callProcedure('sp_registrar_videojuego', [req.body.nombre, req.body.genero]);
   res.status(201).json(rows[0]);
 }));
