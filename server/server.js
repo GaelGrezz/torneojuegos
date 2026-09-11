@@ -13,8 +13,6 @@ app.use(cors());
 app.use(morgan('dev'));
 app.use(express.json());
 
-const PORT = process.env.PORT || 3000;
-
 app.get('/', (req, res) => {
   res.json({ message: 'API del torneo de videojuegos' });
 });
@@ -36,6 +34,8 @@ app.use((err, req, res, next) => {
   if (err.code === 'ER_DUP_ENTRY') return res.status(409).json({ error: 'El registro duplicado no es válido' });
   res.status(500).json({ error: 'Error interno del servidor' });
 });
+
+const PORT = process.env.PORT || 3000;
 
 app.listen(PORT, () => {
   console.log(`Servidor escuchando en http://localhost:${PORT}`);
