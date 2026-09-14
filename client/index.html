@@ -9,6 +9,7 @@
   </head>
   <body>
     <div class="app">
+      <!-- Sidebar de Navegación -->
       <nav class="sidebar">
         <button class="sidebar-tab active" data-tab="dashboard" title="Dashboard">
           <span class="sidebar-tab-icon">
@@ -44,11 +45,187 @@
         </button>
       </nav>
 
-      <main id="app-content" class="app-content"></main>
+      <!-- Contenido Principal -->
+      <main class="app-content">
+        <!-- VISTA DASHBOARD -->
+        <section id="view-dashboard" class="page page-view">
+          <div class="page-header">
+            <h1>Dashboard</h1>
+          </div>
+
+          <div class="stats-bar">
+            <div class="stat-card">
+              <span class="stat-value" id="stat-total-jugadores">0</span>
+              <span class="stat-label">Jugadores</span>
+            </div>
+            <div class="stat-card">
+              <span class="stat-value" id="stat-total-juegos">0</span>
+              <span class="stat-label">Videojuegos</span>
+            </div>
+            <div class="stat-card">
+              <span class="stat-value" id="stat-total-puntuaciones">0</span>
+              <span class="stat-label">Puntuaciones registradas</span>
+            </div>
+            <div class="stat-card">
+              <span class="stat-value" id="stat-promedio-general">0.0</span>
+              <span class="stat-label">Puntuación promedio</span>
+            </div>
+          </div>
+
+          <div class="dashboard-grid">
+            <div class="dashboard-card">
+              <h3 class="dashboard-card-title">Top jugadores</h3>
+              <div id="dashboard-top-players-container"></div>
+            </div>
+            <div class="dashboard-card">
+              <h3 class="dashboard-card-title">Actividad reciente</h3>
+              <div id="dashboard-recent-activity-container"></div>
+            </div>
+          </div>
+        </section>
+
+        <!-- VISTA VIDEOJUEGOS -->
+        <section id="view-juegos" class="page page-view hidden">
+          <div class="page-header">
+            <h1>Videojuegos</h1>
+            <button class="btn btn-primary" id="btn-open-create-game">+ Crear juego</button>
+          </div>
+
+          <div id="games-grid-container"></div>
+        </section>
+
+        <!-- VISTA JUGADORES -->
+        <section id="view-jugadores" class="page page-view hidden">
+          <div class="page-header">
+            <h1>Jugadores</h1>
+            <div class="header-actions">
+              <button class="btn btn-ghost" id="btn-open-score-form">Registrar puntuación</button>
+              <button class="btn btn-primary" id="btn-open-create-player">+ Crear jugador</button>
+            </div>
+          </div>
+
+          <input
+            type="text"
+            class="search-bar"
+            id="search-input"
+            placeholder="Buscar por nombre o gamertag..."
+          />
+
+          <div id="players-table-container"></div>
+        </section>
+      </main>
     </div>
 
-    <div id="modal-container"></div>
+    <!-- MODALES NATIVOS HTML -->
 
+    <!-- Modal 1: Crear Juego -->
+    <div class="modal-overlay hidden" id="modal-game-form">
+      <div class="modal-box" style="max-width: 420px;">
+        <div class="modal-header">
+          <h2>Crear juego</h2>
+          <button class="modal-close btn-close-modal">✕</button>
+        </div>
+        <div class="modal-body">
+          <form class="form" id="form-game">
+            <div id="game-form-error" class="form-error hidden"></div>
+
+            <label for="game-nombre">Nombre del juego</label>
+            <input type="text" id="game-nombre" placeholder="Ej. Tekken" required />
+
+            <label for="game-genero">Género</label>
+            <input type="text" id="game-genero" placeholder="Ej. Lucha" required />
+
+            <label for="game-imagen">URL de imagen (opcional)</label>
+            <input type="text" id="game-imagen" placeholder="https://..." />
+
+            <div class="form-actions">
+              <button type="button" class="btn btn-ghost btn-close-modal">Cancelar</button>
+              <button type="submit" class="btn btn-primary">Guardar juego</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal 2: Clasificación por Juego -->
+    <div class="modal-overlay hidden" id="modal-game-ranking">
+      <div class="modal-box" style="max-width: 520px;">
+        <div class="modal-header">
+          <h2 id="ranking-modal-title">Clasificación</h2>
+          <button class="modal-close btn-close-modal">✕</button>
+        </div>
+        <div class="modal-body" id="game-ranking-body-container"></div>
+      </div>
+    </div>
+
+    <!-- Modal 3: Crear Jugador -->
+    <div class="modal-overlay hidden" id="modal-player-form">
+      <div class="modal-box" style="max-width: 460px;">
+        <div class="modal-header">
+          <h2>Crear jugador</h2>
+          <button class="modal-close btn-close-modal">✕</button>
+        </div>
+        <div class="modal-body">
+          <form class="form" id="form-player">
+            <div id="player-form-error" class="form-error hidden"></div>
+
+            <label for="player-nombre">Nombre</label>
+            <input type="text" id="player-nombre" placeholder="Ej. Juan Pérez" required />
+
+            <label for="player-gamertag">Gamertag / Alias</label>
+            <input type="text" id="player-gamertag" placeholder="Ej. JuanP" required />
+
+            <label for="player-correo">Correo</label>
+            <input type="email" id="player-correo" placeholder="correo@mail.com" required />
+
+            <label style="margin-top: 14px;">Registrar en juegos *</label>
+            <div id="player-games-checklist-container"></div>
+
+            <div class="form-actions">
+              <button type="button" class="btn btn-ghost btn-close-modal">Cancelar</button>
+              <button type="submit" class="btn btn-primary" id="btn-save-player">Guardar jugador</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal 4: Registrar Puntuación -->
+    <div class="modal-overlay hidden" id="modal-score-form">
+      <div class="modal-box" style="max-width: 480px;">
+        <div class="modal-header">
+          <h2>Registrar puntuación</h2>
+          <button class="modal-close btn-close-modal">✕</button>
+        </div>
+        <div class="modal-body" id="score-form-body-container"></div>
+      </div>
+    </div>
+
+    <!-- Modal 5: Detalle de Jugador -->
+    <div class="modal-overlay hidden" id="modal-player-detail">
+      <div class="modal-box" style="max-width: 420px;">
+        <div class="modal-header">
+          <h2 id="detail-player-title">Detalle del Jugador</h2>
+          <button class="modal-close btn-close-modal">✕</button>
+        </div>
+        <div class="modal-body">
+          <table class="mini-table rf04-table">
+            <thead>
+              <tr><th>Gamertag</th><th>Correo</th><th>Fecha de registro</th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td id="detail-player-gamertag">-</td>
+                <td id="detail-player-correo">-</td>
+                <td id="detail-player-fecha">-</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Script Principal Vanilla JS -->
     <script type="module" src="/src/main.js"></script>
   </body>
 </html>
