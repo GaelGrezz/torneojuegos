@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Torneo Videojuegos - Client</title>
+    <link rel="stylesheet" href="/src/index.css" />
+  </head>
+  <body>
+    <div class="app">
+      <nav class="sidebar">
+        <button class="sidebar-tab active" data-tab="dashboard" title="Dashboard">
+          <span class="sidebar-tab-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+              <rect x="3" y="3" width="7" height="9" rx="1.5" />
+              <rect x="14" y="3" width="7" height="5" rx="1.5" />
+              <rect x="14" y="12" width="7" height="9" rx="1.5" />
+              <rect x="3" y="16" width="7" height="5" rx="1.5" />
+            </svg>
+          </span>
+        </button>
+
+        <button class="sidebar-tab" data-tab="juegos" title="Videojuegos">
+          <span class="sidebar-tab-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M6 9h4M8 7v4" />
+              <circle cx="16.5" cy="8.5" r="0.9" fill="currentColor" stroke="none" />
+              <circle cx="18.5" cy="10.5" r="0.9" fill="currentColor" stroke="none" />
+              <path d="M7.5 6h9a4 4 0 0 1 4 4.2l-.4 4.6a2.6 2.6 0 0 1-4.6 1.5L14 14.5a2 2 0 0 0-1.6-.8h-.8a2 2 0 0 0-1.6.8l-1.5 1.8a2.6 2.6 0 0 1-4.6-1.5l-.4-4.6A4 4 0 0 1 7.5 6Z" />
+            </svg>
+          </span>
+        </button>
+
+        <button class="sidebar-tab" data-tab="jugadores" title="Jugadores">
+          <span class="sidebar-tab-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="9" cy="8" r="3" />
+              <path d="M3.5 20a5.5 5.5 0 0 1 11 0" />
+              <path d="M16 8.5a2.8 2.8 0 1 1 0 5.6" />
+              <path d="M15.5 14.3c2.4.4 4 2.2 4.5 5.2" />
+            </svg>
+          </span>
+        </button>
+      </nav>
+
+      <main id="app-content" class="app-content"></main>
+    </div>
+
+    <div id="modal-container"></div>
+
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>
