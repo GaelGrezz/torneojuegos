@@ -1,0 +1,15 @@
+.header-actions { display: flex; gap: 10px; }
+
+/* Agrupación visual por jugador en la tabla de clasificación */
+.grupo-par { background: var(--color-bg-elevated); }
+.grupo-impar { background: transparent; }
+
+/* Línea divisoria donde termina un jugador y empieza el siguiente */
+.separador-grupo td { border-top: 1px solid var(--color-border); }
+
+.celda-jugador {
+  cursor: pointer;
+  vertical-align: middle;
+  font-weight: 600;
+}
+.celda-jugador:hover { color: var(--color-primary); }

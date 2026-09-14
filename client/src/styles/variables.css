@@ -1,0 +1,23 @@
+:root {
+  --color-bg: #0a0b0e;
+  --color-bg-panel: #16171c;
+  --color-bg-elevated: #1d1f25;
+  --color-border: #24262c;
+
+  --color-text: #f2f3f5;
+  --color-text-muted: #888b93;
+
+  --color-primary: #2f7bf7;
+  --color-primary-hover: #1f65da;
+
+  --color-gold: #f4c430;
+  --color-success: #3ecf7e;
+  --color-danger: #ff5c5c;
+
+  --color-row-white: #ffffff;
+  --color-row-alt: #eef1fb;
+  --color-row-text: #1a1a1a;
+
+  --radius: 6px;
+  --font-ui: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
+}
