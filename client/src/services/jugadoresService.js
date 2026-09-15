@@ -1,13 +1,7 @@
-let jugadores = [
-  { id: 1, nombre: 'Juan Pérez', gamertag: 'JuanP', correo: 'juan.perez@mail.com', fechaRegistro: '2024-01-10' },
-  { id: 2, nombre: 'Ana Gómez', gamertag: 'AnaG', correo: 'ana.gomez@mail.com', fechaRegistro: '2024-02-15' },
-  { id: 3, nombre: 'Luis Torres', gamertag: 'LuisT', correo: 'luis.torres@mail.com', fechaRegistro: '2024-03-01' },
-];
-
-let nextId = 4;
+import { loadJugadoresStore, saveJugadoresStore } from './store.js';
 
 export function obtenerJugadores() {
-  return jugadores;
+  return loadJugadoresStore();
 }
 
 // RF01: nombre, gamertag y correo obligatorios; gamertag único
@@ -16,19 +10,24 @@ export function crearJugador({ nombre, gamertag, correo }) {
     return { success: false, error: 'Nombre, gamertag y correo son obligatorios.' };
   }
 
+  const jugadores = obtenerJugadores();
   const gamertagLimpio = gamertag.trim();
   const yaExiste = jugadores.some((j) => j.gamertag.toLowerCase() === gamertagLimpio.toLowerCase());
   if (yaExiste) {
     return { success: false, error: `El gamertag "${gamertagLimpio}" ya está en uso.` };
   }
 
+  const maxId = jugadores.reduce((max, j) => (j.id > max ? j.id : max), 0);
   const nuevo = {
-    id: nextId++,
+    id: maxId + 1,
     nombre: nombre.trim(),
     gamertag: gamertagLimpio,
     correo: correo.trim(),
     fechaRegistro: new Date().toISOString().split('T')[0],
   };
-  jugadores = [...jugadores, nuevo];
+
+  const actualizados = [...jugadores, nuevo];
+  saveJugadoresStore(actualizados);
+
   return { success: true, data: nuevo };
 }

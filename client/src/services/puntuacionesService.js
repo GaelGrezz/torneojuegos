@@ -1,15 +1,7 @@
-let movimientos = [
-  { id: 1, jugadorId: 1, juegoId: 1, delta: 1500, tipo: 'incremento', fecha: '2024-03-01' },
-  { id: 2, jugadorId: 1, juegoId: 2, delta: 800, tipo: 'incremento', fecha: '2024-03-05' },
-  { id: 3, jugadorId: 2, juegoId: 1, delta: 2200, tipo: 'incremento', fecha: '2024-03-02' },
-  { id: 4, jugadorId: 2, juegoId: 2, delta: 950, tipo: 'incremento', fecha: '2024-03-06' },
-  { id: 5, jugadorId: 3, juegoId: 1, delta: 1100, tipo: 'incremento', fecha: '2024-03-03' },
-];
-
-let nextId = 6;
+import { loadMovimientosStore, saveMovimientosStore } from './store.js';
 
 export function obtenerMovimientos() {
-  return movimientos;
+  return loadMovimientosStore();
 }
 
 export function calcularPuntuacionActual(listaMovimientos, jugadorId, juegoId) {
@@ -97,6 +89,7 @@ export function aplicarMovimiento({ jugadorId, juegoId, cantidad, tipo }) {
     return { success: false, error: 'La cantidad debe ser un número mayor a 0.' };
   }
 
+  const movimientos = obtenerMovimientos();
   const actual = calcularPuntuacionActual(movimientos, jugadorId, juegoId);
   const delta = tipo === 'decremento' ? -valor : valor;
   const nuevoTotal = actual + delta;
@@ -108,15 +101,18 @@ export function aplicarMovimiento({ jugadorId, juegoId, cantidad, tipo }) {
     };
   }
 
+  const maxId = movimientos.reduce((max, m) => (m.id > max ? m.id : max), 0);
   const movimiento = {
-    id: nextId++,
+    id: maxId + 1,
     jugadorId,
     juegoId,
     delta,
     tipo: tipo === 'decremento' ? 'decremento' : 'incremento',
     fecha: new Date().toISOString().split('T')[0],
   };
-  movimientos = [...movimientos, movimiento];
+
+  const actualizados = [...movimientos, movimiento];
+  saveMovimientosStore(actualizados);
 
   return { success: true, data: movimiento, nuevoTotal };
 }

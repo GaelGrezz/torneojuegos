@@ -1,0 +1,139 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Torneo Videojuegos - Tabla de Jugadores</title>
+    <link rel="stylesheet" href="/src/index.css" />
+  </head>
+  <body>
+    <div class="app">
+      <!-- Sidebar con Enlaces HTML Nativos -->
+      <nav class="sidebar">
+        <a href="index.html" class="sidebar-tab" title="Dashboard">
+          <span class="sidebar-tab-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+              <rect x="3" y="3" width="7" height="9" rx="1.5" />
+              <rect x="14" y="3" width="7" height="5" rx="1.5" />
+              <rect x="14" y="12" width="7" height="9" rx="1.5" />
+              <rect x="3" y="16" width="7" height="5" rx="1.5" />
+            </svg>
+          </span>
+        </a>
+
+        <a href="videojuegos.html" class="sidebar-tab" title="Videojuegos">
+          <span class="sidebar-tab-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M6 9h4M8 7v4" />
+              <circle cx="16.5" cy="8.5" r="0.9" fill="currentColor" stroke="none" />
+              <circle cx="18.5" cy="10.5" r="0.9" fill="currentColor" stroke="none" />
+              <path d="M7.5 6h9a4 4 0 0 1 4 4.2l-.4 4.6a2.6 2.6 0 0 1-4.6 1.5L14 14.5a2 2 0 0 0-1.6-.8h-.8a2 2 0 0 0-1.6.8l-1.5 1.8a2.6 2.6 0 0 1-4.6-1.5l-.4-4.6A4 4 0 0 1 7.5 6Z" />
+            </svg>
+          </span>
+        </a>
+
+        <a href="jugadores.html" class="sidebar-tab active" title="Jugadores">
+          <span class="sidebar-tab-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="9" cy="8" r="3" />
+              <path d="M3.5 20a5.5 5.5 0 0 1 11 0" />
+              <path d="M16 8.5a2.8 2.8 0 1 1 0 5.6" />
+              <path d="M15.5 14.3c2.4.4 4 2.2 4.5 5.2" />
+            </svg>
+          </span>
+        </a>
+      </nav>
+
+      <!-- Contenido Principal: Página Jugadores -->
+      <main class="app-content">
+        <section class="page">
+          <div class="page-header">
+            <h1>Jugadores</h1>
+            <div class="header-actions">
+              <button class="btn btn-ghost" id="btn-open-score-form">Registrar puntuación</button>
+              <button class="btn btn-primary" id="btn-open-create-player">+ Crear jugador</button>
+            </div>
+          </div>
+
+          <input
+            type="text"
+            class="search-bar"
+            id="search-input"
+            placeholder="Buscar por nombre o gamertag..."
+          />
+
+          <div id="players-table-container"></div>
+        </section>
+      </main>
+    </div>
+
+    <!-- Modales HTML Nativos para Jugadores -->
+    <div class="modal-overlay hidden" id="modal-player-form">
+      <div class="modal-box" style="max-width: 460px;">
+        <div class="modal-header">
+          <h2>Crear jugador</h2>
+          <button class="modal-close btn-close-modal">✕</button>
+        </div>
+        <div class="modal-body">
+          <form class="form" id="form-player">
+            <div id="player-form-error" class="form-error hidden"></div>
+
+            <label for="player-nombre">Nombre</label>
+            <input type="text" id="player-nombre" placeholder="Ej. Juan Pérez" required />
+
+            <label for="player-gamertag">Gamertag / Alias</label>
+            <input type="text" id="player-gamertag" placeholder="Ej. JuanP" required />
+
+            <label for="player-correo">Correo</label>
+            <input type="email" id="player-correo" placeholder="correo@mail.com" required />
+
+            <label style="margin-top: 14px;">Registrar en juegos *</label>
+            <div id="player-games-checklist-container"></div>
+
+            <div class="form-actions">
+              <button type="button" class="btn btn-ghost btn-close-modal">Cancelar</button>
+              <button type="submit" class="btn btn-primary" id="btn-save-player">Guardar jugador</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <div class="modal-overlay hidden" id="modal-score-form">
+      <div class="modal-box" style="max-width: 480px;">
+        <div class="modal-header">
+          <h2>Registrar puntuación</h2>
+          <button class="modal-close btn-close-modal">✕</button>
+        </div>
+        <div class="modal-body" id="score-form-body-container"></div>
+      </div>
+    </div>
+
+    <div class="modal-overlay hidden" id="modal-player-detail">
+      <div class="modal-box" style="max-width: 420px;">
+        <div class="modal-header">
+          <h2 id="detail-player-title">Detalle del Jugador</h2>
+          <button class="modal-close btn-close-modal">✕</button>
+        </div>
+        <div class="modal-body">
+          <table class="mini-table rf04-table">
+            <thead>
+              <tr><th>Gamertag</th><th>Correo</th><th>Fecha de registro</th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td id="detail-player-gamertag">-</td>
+                <td id="detail-player-correo">-</td>
+                <td id="detail-player-fecha">-</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Script especifico de la página Jugadores -->
+    <script type="module" src="/src/pages/jugadores.js"></script>
+  </body>
+</html>
