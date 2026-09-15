@@ -9,7 +9,6 @@ export function initJuegosUI(onDataChanged) {
   const formGame = document.getElementById('form-game');
   const formError = document.getElementById('game-form-error');
 
-  // Abrir modal de crear juego
   btnCreate?.addEventListener('click', () => {
     formGame.reset();
     formError.classList.add('hidden');
@@ -17,7 +16,6 @@ export function initJuegosUI(onDataChanged) {
     showModal(modalForm);
   });
 
-  // Form submit para crear juego
   formGame?.addEventListener('submit', (e) => {
     e.preventDefault();
     formError.classList.add('hidden');
@@ -70,7 +68,6 @@ export function updateJuegosUI() {
 
   container.innerHTML = `<div class="game-grid">${gridHtml}</div>`;
 
-  // Listener para clic en tarjeta de juego -> abre modal de ranking
   container.querySelectorAll('.game-card').forEach((card) => {
     card.addEventListener('click', () => {
       const gameId = Number(card.getAttribute('data-game-id'));

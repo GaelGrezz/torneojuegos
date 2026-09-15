@@ -4,7 +4,6 @@ export function obtenerJuegos() {
   return loadJuegosStore();
 }
 
-// RF02: nombre y género obligatorios; nombre único
 export function crearJuego({ nombre, genero, imagen }) {
   if (!nombre?.trim() || !genero?.trim()) {
     return { success: false, error: 'Nombre y género son obligatorios.' };

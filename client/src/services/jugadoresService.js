@@ -4,7 +4,6 @@ export function obtenerJugadores() {
   return loadJugadoresStore();
 }
 
-// RF01: nombre, gamertag y correo obligatorios; gamertag único
 export function crearJugador({ nombre, gamertag, correo }) {
   if (!nombre?.trim() || !gamertag?.trim() || !correo?.trim()) {
     return { success: false, error: 'Nombre, gamertag y correo son obligatorios.' };

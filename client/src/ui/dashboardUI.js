@@ -16,7 +16,6 @@ export function updateDashboardUI() {
   const topJugadores = calcularTopJugadores(movimientos, 5);
   const actividadReciente = obtenerMovimientosRecientes(movimientos, 6);
 
-  // 1. Estadísticas
   const totalJugadores = jugadores.length;
   const totalJuegos = juegos.length;
   const totalPuntuaciones = clasificacion.length;
@@ -34,7 +33,6 @@ export function updateDashboardUI() {
   if (elPuntuaciones) elPuntuaciones.textContent = totalPuntuaciones;
   if (elPromedio) elPromedio.textContent = promedioGeneral;
 
-  // 2. Top Jugadores
   const topContainer = document.getElementById('dashboard-top-players-container');
   if (topContainer) {
     if (topJugadores.length === 0) {
@@ -60,7 +58,6 @@ export function updateDashboardUI() {
     }
   }
 
-  // 3. Actividad Reciente
   const recentContainer = document.getElementById('dashboard-recent-activity-container');
   if (recentContainer) {
     if (actividadReciente.length === 0) {

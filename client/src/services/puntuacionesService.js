@@ -17,7 +17,6 @@ export function calcularMovimientosPorPar(listaMovimientos, jugadorId, juegoId) 
     .sort((a, b) => (a.fecha < b.fecha ? 1 : -1));
 }
 
-// RF06: clasificación (jugador + juego) ordenada de mayor a menor puntuación.
 export function calcularClasificacion(listaMovimientos) {
   const pares = new Map();
   listaMovimientos.forEach((m) => {

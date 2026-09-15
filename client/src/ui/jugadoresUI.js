@@ -19,13 +19,11 @@ export function initJugadoresUI(onDataChanged) {
   const btnCreatePlayer = document.getElementById('btn-open-create-player');
   const btnScoreForm = document.getElementById('btn-open-score-form');
 
-  // Search input live filtering
   searchInput?.addEventListener('input', (e) => {
     busquedaFiltro = e.target.value;
     updateJugadoresUI();
   });
 
-  // Modal 3: Crear Jugador
   btnCreatePlayer?.addEventListener('click', () => {
     openPlayerFormModal();
   });
@@ -36,7 +34,6 @@ export function initJugadoresUI(onDataChanged) {
     handleCreatePlayerSubmit(onDataChanged);
   });
 
-  // Modal 4: Registrar Puntuación
   btnScoreForm?.addEventListener('click', () => {
     openScoreFormModal(onDataChanged);
   });
@@ -54,7 +51,6 @@ export function updateJugadoresUI() {
 
   const clasificacionGlobal = calcularClasificacionAgrupada(movimientos);
 
-  // Calc posiciones por juego
   const filasPorJuego = {};
   clasificacionGlobal.forEach((fila) => {
     if (!filasPorJuego[fila.juegoId]) filasPorJuego[fila.juegoId] = [];
@@ -69,7 +65,6 @@ export function updateJugadoresUI() {
     });
   });
 
-  // Filtrar clasificacion por búsqueda
   const termino = busquedaFiltro.toLowerCase().trim();
   const clasificacionFiltrada = termino
     ? clasificacionGlobal.filter((fila) => {
@@ -142,7 +137,6 @@ export function updateJugadoresUI() {
     </table>
   `;
 
-  // Listener para clic en celda de jugador -> abre modal detalle
   container.querySelectorAll('.celda-jugador').forEach((td) => {
     td.addEventListener('click', () => {
       const jId = Number(td.getAttribute('data-jugador-id'));
@@ -200,7 +194,6 @@ function openPlayerFormModal() {
 
     checklistContainer.innerHTML = `<div class="juegos-checklist">${checklistHtml}</div>`;
 
-    // Listeners para checkboxes
     checklistContainer.querySelectorAll('.chk-juego').forEach((chk) => {
       chk.addEventListener('change', (e) => {
         const id = e.target.getAttribute('data-id');
@@ -367,7 +360,6 @@ function openScoreFormModal(onDataChanged) {
       </form>
     `;
 
-    // Attach listeners for selects
     const selJ = container.querySelector('#select-score-jugador');
     const selG = container.querySelector('#select-score-juego');
     const btnInc = container.querySelector('#btn-op-incremento');
