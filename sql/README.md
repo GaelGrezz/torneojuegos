@@ -1,129 +1,132 @@
-# Guía de Ejemplos: Procedimientos Almacenados en MySQL
+# Guía de Arquitectura y Procedimientos Almacenados en MySQL
+## Sistema de Torneo de Videojuegos y Puntuaciones
 
-Esta guía muestra únicamente los ejemplos de uso (`CALL`) para interactuar con la base de datos y probar cada uno de los Requerimientos Funcionales (**RF01** a **RF08**).
+Este documento describe la arquitectura de base de datos normalizada y proporciona los ejemplos de uso (`CALL`) para todos los procedimientos almacenados (CRUD completo) definidos en `tables.sql` y `procedures.sql`.
 
 ---
 
-## 1. Ejemplos de Registro de Datos
+## 1. Modificaciones e Innovaciones en la Estructura de Tablas
 
-### **RF01. Registrar jugadores**
-Registra nuevos jugadores validando obligatoriedad de campos y unicidad de Gamertag y Correo.
+Se aplicó un proceso de **normalización (3FN)** sobre la estructura inicial:
+
+1. **Tabla `genero` (Nueva Entidad Catálogo)**: Se independizó la entidad de géneros para evitar redundancia de texto y controlar los géneros disponibles (`id`, `nombre` ÚNICO).
+2. **Normalización en `videojuego`**:
+   * Se reemplazó la columna de texto `genero VARCHAR(20)` por la llave foránea `id_genero INT UNSIGNED NULL`.
+   * Se añadió `ON DELETE SET NULL` para que la eliminación de un género no borre los videojuegos asociados, dejándolos marcados como "sin género".
+3. **Validación de Correo**: En `sp_registrar_jugador` y `sp_modificar_jugador` se agregó validación de formato mediante `LIKE '%_@_%.__%'`.
+4. **Fechas Automáticas y Restricción No Negativa**: `fecha_registro` y `fecha` utilizan `DEFAULT (CURRENT_DATE)` y la puntuación valida `CHECK (puntuacion >= 0)`.
+
+---
+
+## 2. Guía de Ejecución y Ejemplos de Procedimientos (CRUD)
+
+### 2.1. Gestión de Géneros (`genero`)
 
 ```sql
--- Parámetros: (Nombre, Alias/Gamertag, Correo, Fecha Registro)
-CALL sp_registrar_jugador('Carlos Silva', 'Shadow', 'carlos@email.com', '2024-01-15');
-CALL sp_registrar_jugador('Ana Martínez', 'Nova', 'ana@email.com', '2024-02-10');
-CALL sp_registrar_jugador('Gabriel Torres', 'Ghost', 'gabriel@email.com', '2024-03-05');
+-- [CREATE] Registrar géneros
+CALL sp_registrar_genero('Metroidvania');
+CALL sp_registrar_genero('RPG');
+CALL sp_registrar_genero('Lucha');
+
+-- [READ] Consultar géneros registrados
+CALL sp_consultar_generos();
+
+-- [UPDATE] Modificar un género
+CALL sp_modificar_genero(1, 'Metroidvania / Plataforma');
+
+-- [DELETE] Eliminar un género (Los videojuegos mantendrán id_genero = NULL)
+CALL sp_eliminar_genero(3);
 ```
 
 ---
 
-### **RF02. Registrar videojuegos**
-Registra nuevos videojuegos evitando nombres duplicados.
+### 2.2. Gestión de Videojuegos (`videojuego`)
 
 ```sql
--- Parámetros: (Nombre, Género)
-CALL sp_registrar_videojuego('Tekken', 'Lucha');
-CALL sp_registrar_videojuego('Street Fighter', 'Lucha');
-CALL sp_registrar_videojuego('Halo Infinite', 'Shooter');
+-- [CREATE] Registrar videojuegos asociando el ID de género
+-- Parámetros: (Nombre, ID_Genero)
+CALL sp_registrar_videojuego('Hollow Knight', 1);
+CALL sp_registrar_videojuego('Elden Ring', 2);
+CALL sp_registrar_videojuego('Juego Indie', NULL); -- Género opcional
+
+-- [READ] Consultar videojuegos (incluye el nombre del género o 'sin género')
+CALL sp_consultar_videojuegos();
+
+-- [UPDATE] Modificar nombre o género de un videojuego
+CALL sp_modificar_videojuego(1, 'Hollow Knight: Silksong', 1);
+
+-- [DELETE] Eliminar videojuego (elimina en cascada sus puntuaciones asociadas)
+CALL sp_eliminar_videojuego(3);
 ```
 
 ---
 
-### **RF03 y RF05. Registrar una puntuación**
-Permite registrar puntuaciones asociando un jugador y videojuego existentes. Valida que la puntuación no sea negativa.
+### 2.3. Gestión de Jugadores (`jugador`)
 
 ```sql
--- Parámetros: (ID_Jugador, ID_Videojuego, Puntuación, Fecha)
-CALL sp_registrar_puntuacion(1, 1, 950, '2024-05-01'); -- Shadow en Tekken
-CALL sp_registrar_puntuacion(2, 1, 820, '2024-05-02'); -- Nova en Tekken
-CALL sp_registrar_puntuacion(3, 1, 760, '2024-05-03'); -- Ghost en Tekken
-```
+-- [CREATE] Registrar jugadores
+-- Parámetros: (Nombre, Gamertag/Alias, Correo)
+CALL sp_registrar_jugador('Enrique Herrera', 'Enkrid', 'enrique@correo.com');
+CALL sp_registrar_jugador('Carlos López', 'DevKing', 'carlos@correo.com');
 
----
-
-## 2. Ejemplos de Consultas y Reportes
-
-### **RF04. Consultar jugadores**
-Muestra los jugadores registrados mostrando `GAMERTAG | CORREO | FECHA DE REGISTRO`.
-
-```sql
+-- [READ] Consultar todos los jugadores
 CALL sp_consultar_jugadores();
-```
 
-**Resultado esperado:**
-| GAMERTAG | CORREO | FECHA DE REGISTRO |
-| :--- | :--- | :--- |
-| Ghost | gabriel@email.com | 2024-03-05 |
-| Nova | ana@email.com | 2024-02-10 |
-| Shadow | carlos@email.com | 2024-01-15 |
+-- [UPDATE] Modificar información de un jugador
+CALL sp_modificar_jugador(1, 'Enrique H.', 'Enkrid_Pro', 'enrique_nuevo@correo.com');
+
+-- [DELETE] Eliminar jugador y sus puntuaciones asociadas
+CALL sp_eliminar_jugador(2);
+```
 
 ---
 
-### **RF06. Mostrar clasificación**
-Muestra la tabla ordenada de mayor a menor puntuación (`POSICIÓN | JUGADOR | VIDEOJUEGO | PUNTUACIÓN`).
+### 2.4. Gestión de Puntuaciones (`puntuacion`)
 
 ```sql
--- Clasificación filtrada para un videojuego específico:
-CALL sp_mostrar_clasificacion('Tekken');
+-- [CREATE] Registrar puntuación
+-- Parámetros: (ID_Jugador, ID_Videojuego, Puntuacion)
+CALL sp_registrar_puntuacion(1, 1, 1500);
+CALL sp_registrar_puntuacion(1, 2, 5000);
 
--- Clasificación general (todos los videojuegos):
-CALL sp_mostrar_clasificacion(NULL);
+-- [READ] Consultar tabla general de puntuaciones con nombres de Jugador y Videojuego
+CALL sp_consultar_puntuaciones();
+
+-- [UPDATE] Actualizar el puntaje de un registro
+CALL sp_modificar_puntuacion(1, 1800);
+
+-- [DELETE] Eliminar un registro de puntuación
+CALL sp_eliminar_puntuacion(1);
 ```
-
-**Resultado esperado:**
-| POSICIÓN | JUGADOR | VIDEOJUEGO | PUNTUACIÓN | FECHA |
-| :---: | :--- | :--- | :---: | :---: |
-| 1 | Shadow | Tekken | 950 | 2024-05-01 |
-| 2 | Nova | Tekken | 820 | 2024-05-02 |
-| 3 | Ghost | Tekken | 760 | 2024-05-03 |
 
 ---
 
-### **RF07. Buscar jugadores**
-Busca coincidencias de jugadores por Nombre o Gamertag.
+### 2.5. Estadísticas del Sistema (`sp_obtener_estadisticas`)
 
 ```sql
--- Búsqueda por término o coincidencia parcial:
-CALL sp_buscar_jugadores('Shadow');
-CALL sp_buscar_jugadores('Carlos');
-```
-
-**Resultado esperado:**
-| ID | NOMBRE | GAMERTAG | CORREO | FECHA DE REGISTRO |
-| :---: | :--- | :--- | :--- | :---: |
-| 1 | Carlos Silva | Shadow | carlos@email.com | 2024-01-15 |
-
----
-
-### **RF08. Estadísticas**
-Calcula en tiempo real el total de jugadores, videojuegos, puntuaciones registradas y la puntuación promedio.
-
-```sql
+-- Devuelve total_jugadores, total_generos, total_videojuegos, total_puntuaciones y puntuacion_promedio
 CALL sp_obtener_estadisticas();
 ```
 
-**Resultado esperado:**
-| total_jugadores | total_videojuegos | total_puntuaciones | puntuacion_promedio |
-| :---: | :---: | :---: | :---: |
-| 3 | 3 | 3 | 843.33 |
-
 ---
 
-## 3. Pruebas de Validación de Errores (Casos Límite)
+## 3. Pruebas QA de Excepciones y Errores Controlados
 
-Ejemplos de llamadas que deben fallar y devolver mensajes de error controlados:
+Las siguientes llamadas permiten verificar que el sistema detiene registros inválidos:
 
 ```sql
--- Error RF01: Intento de registrar Gamertag duplicado
-CALL sp_registrar_jugador('Otro Usuario', 'Shadow', 'otro@email.com', '2024-05-01');
+-- Error: Registrar género duplicado
+CALL sp_registrar_genero('rpg');
 
--- Error RF02: Intento de registrar juego duplicado
-CALL sp_registrar_videojuego('Tekken', 'Lucha');
+-- Error: Formato de correo inválido
+CALL sp_registrar_jugador('Ana', 'AnaGamer', 'correo_invalido.com');
 
--- Error RF03/RF05: Intento de registrar puntuación negativa
-CALL sp_registrar_puntuacion(1, 1, -50, '2024-05-01');
+-- Error: Gamertag o Correo duplicado
+CALL sp_registrar_jugador('Otro', 'Enkrid_Pro', 'otro@correo.com');
 
--- Error RF03/RF05: Intento de registrar puntuación con jugador inexistente
-CALL sp_registrar_puntuacion(999, 1, 500, '2024-05-01');
+-- Error: ID de género inexistente al registrar juego
+CALL sp_registrar_videojuego('Juego Raro', 999);
+
+-- Error: Puntuación negativa
+CALL sp_registrar_puntuacion(1, 1, -100);
 ```
