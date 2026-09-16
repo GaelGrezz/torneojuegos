@@ -13,9 +13,9 @@ describe('ReportesModel', () => {
   test('invoca el procedimiento de clasificación', async () => {
     callProcedure.mockResolvedValue([]);
 
-    await ReportesModel.getClassification('Celeste');
+    await ReportesModel.getClassification();
 
-    expect(callProcedure).toHaveBeenCalledWith('sp_mostrar_clasificacion', ['Celeste']);
+    expect(callProcedure).toHaveBeenCalledWith('sp_consultar_puntuaciones');
   });
 
   test('invoca el procedimiento de estadísticas', async () => {

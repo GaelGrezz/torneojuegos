@@ -3,6 +3,7 @@ const morgan = require('morgan');
 var cors = require('cors');
 const jugadoresRoutes = require('./routes/jugadores');
 const videojuegosRoutes = require('./routes/videojuegos');
+const generosRoutes = require('./routes/generos');
 const puntuacionesRoutes = require('./routes/puntuaciones');
 const reportesRoutes = require('./routes/reportes');
 
@@ -23,6 +24,7 @@ app.get('/api', (req, res) => {
 
 app.use('/api/jugadores', jugadoresRoutes);
 app.use('/api/videojuegos', videojuegosRoutes);
+app.use('/api/generos', generosRoutes);
 app.use('/api/puntuaciones', puntuacionesRoutes);
 app.use('/api', reportesRoutes);
 

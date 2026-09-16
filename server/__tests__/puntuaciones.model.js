@@ -10,30 +10,22 @@ describe('PuntuacionesModel', () => {
     jest.clearAllMocks();
   });
 
-  test('consulta la clasificación con el videojuego indicado', async () => {
+  test('consulta todas las puntuaciones', async () => {
     callProcedure.mockResolvedValue([]);
 
-    await PuntuacionesModel.getClassification('Celeste');
+    await PuntuacionesModel.getAll();
 
-    expect(callProcedure).toHaveBeenCalledWith('sp_mostrar_clasificacion', ['Celeste']);
-  });
-
-  test('usa null cuando no se filtra la clasificación', async () => {
-    callProcedure.mockResolvedValue([]);
-
-    await PuntuacionesModel.getClassification();
-
-    expect(callProcedure).toHaveBeenCalledWith('sp_mostrar_clasificacion', [null]);
+    expect(callProcedure).toHaveBeenCalledWith('sp_consultar_puntuaciones');
   });
 
   test('invoca el procedimiento para registrar puntuaciones', async () => {
     callProcedure.mockResolvedValue([]);
 
-    await PuntuacionesModel.create(1, 2, 95, '2026-09-16');
+    await PuntuacionesModel.create(1, 2, 95);
 
     expect(callProcedure).toHaveBeenCalledWith(
       'sp_registrar_puntuacion',
-      [1, 2, 95, '2026-09-16']
+      [1, 2, 95]
     );
   });
 });
