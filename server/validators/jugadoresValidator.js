@@ -13,7 +13,7 @@ const sendValidationError = (req, res, next) => {
 const validateJugador = [
   body('nombre').notEmpty(),
   body('alias').notEmpty(),
-  body('correo').notEmpty(),
+  body('correo').notEmpty().isEmail(),
   sendValidationError
 ];
 
