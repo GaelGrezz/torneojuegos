@@ -33,14 +33,6 @@
           </span>
         </a>
 
-        <a href="generos.html" class="sidebar-tab" title="Géneros">
-          <span class="sidebar-tab-icon">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M4 6h16M4 12h10M4 18h14" />
-            </svg>
-          </span>
-        </a>
-
         <a href="jugadores.html" class="sidebar-tab" title="Jugadores">
           <span class="sidebar-tab-icon">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
@@ -89,8 +81,44 @@
               <div id="dashboard-recent-activity-container"></div>
             </div>
           </div>
+
+          <!-- Catálogo de Géneros (movido desde generos.html) -->
+          <div class="dashboard-card" style="margin-top: 24px;">
+            <div class="page-header" style="margin-bottom: 16px;">
+              <div>
+                <h3 class="dashboard-card-title">Catálogo de géneros</h3>
+                <p class="section-subtitle">Gestiona las categorías independientes para los videojuegos</p>
+              </div>
+              <button class="btn btn-primary" id="btn-open-create-genero">+ Crear género</button>
+            </div>
+            <div id="generos-table-container"></div>
+          </div>
         </section>
       </main>
+    </div>
+
+    <!-- Modal de Géneros (movido desde generos.html) -->
+    <div class="modal-overlay hidden" id="modal-genero-form">
+      <div class="modal-box" style="max-width: 420px;">
+        <div class="modal-header">
+          <h2 id="modal-genero-title">Crear género</h2>
+          <button class="modal-close btn-close-modal">✕</button>
+        </div>
+        <div class="modal-body">
+          <form class="form" id="form-genero">
+            <div id="genero-form-error" class="form-error hidden"></div>
+
+            <label for="genero-nombre">Nombre del género</label>
+            <input type="text" id="genero-nombre" placeholder="Ej. battle royale, rpg, deportes..." required />
+            <span class="hint-text">Se guardará automáticamente en minúsculas.</span>
+
+            <div class="form-actions">
+              <button type="button" class="btn btn-ghost btn-close-modal">Cancelar</button>
+              <button type="submit" class="btn btn-primary">Guardar género</button>
+            </div>
+          </form>
+        </div>
+      </div>
     </div>
 
     <!-- Script especifico de la página Dashboard -->

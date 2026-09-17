@@ -1,6 +1,11 @@
 import { apiFetch } from './api.js';
 import { loadMovimientosStore, saveMovimientosStore } from './store.js';
 
+// Tope máximo permitido para una puntuación. Evita que un input type="number"
+// acepte notación científica (ej. "2e24") u otros valores absurdos que luego
+// se muestran en notación exponencial en la UI.
+export const PUNTUACION_MAX = 1_000_000;
+
 export async function obtenerMovimientos() {
   const res = await apiFetch('/puntuaciones');
   if (res.success && Array.isArray(res.data)) {
@@ -110,6 +115,9 @@ export async function aplicarMovimiento({ jugadorId, juegoId, cantidad, tipo }) 
   if (Number.isNaN(valor) || valor <= 0) {
     return { success: false, error: 'La cantidad debe ser un número mayor a 0.' };
   }
+  if (!Number.isFinite(valor) || valor > PUNTUACION_MAX) {
+    return { success: false, error: `La cantidad no puede superar ${PUNTUACION_MAX.toLocaleString('es-ES')}.` };
+  }
 
   const movimientos = await obtenerMovimientos();
   const actual = calcularPuntuacionActual(movimientos, jugadorId, juegoId);
@@ -120,6 +128,12 @@ export async function aplicarMovimiento({ jugadorId, juegoId, cantidad, tipo }) 
     return {
       success: false,
       error: `Error: La puntuación no puede ser negativa. (El jugador tiene ${actual} puntos).`,
+    };
+  }
+  if (nuevoTotal > PUNTUACION_MAX) {
+    return {
+      success: false,
+      error: `Error: La puntuación total no puede superar ${PUNTUACION_MAX.toLocaleString('es-ES')}. (El jugador tiene ${actual} puntos).`,
     };
   }
 
@@ -157,6 +171,9 @@ export async function modificarPuntuacion(id, nuevaPuntuacion) {
   const valor = Number(nuevaPuntuacion);
   if (Number.isNaN(valor) || valor < 0) {
     return { success: false, error: 'Error: La puntuación no puede ser negativa ni nula.' };
+  }
+  if (!Number.isFinite(valor) || valor > PUNTUACION_MAX) {
+    return { success: false, error: `Error: La puntuación no puede superar ${PUNTUACION_MAX.toLocaleString('es-ES')}.` };
   }
 
   const res = await apiFetch(`/puntuaciones/${id}`, {

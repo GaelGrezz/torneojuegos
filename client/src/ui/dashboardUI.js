@@ -7,10 +7,12 @@ import {
   obtenerMovimientosRecientes,
 } from '../services/puntuacionesService.js';
 
-export function updateDashboardUI() {
-  const jugadores = obtenerJugadores();
-  const juegos = obtenerJuegos();
-  const movimientos = obtenerMovimientos();
+export async function updateDashboardUI() {
+  const [jugadores, juegos, movimientos] = await Promise.all([
+    obtenerJugadores(),
+    obtenerJuegos(),
+    obtenerMovimientos(),
+  ]);
 
   const clasificacion = calcularClasificacion(movimientos);
   const topJugadores = calcularTopJugadores(movimientos, 5);

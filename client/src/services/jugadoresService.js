@@ -1,5 +1,6 @@
 import { apiFetch } from './api.js';
 import { loadJugadoresStore, saveJugadoresStore } from './store.js';
+import { obtenerMovimientos, eliminarPuntuacion } from './puntuacionesService.js';
 
 export async function obtenerJugadores() {
   const res = await apiFetch('/jugadores');
@@ -126,6 +127,18 @@ export async function modificarJugador(id, { nombre, gamertag, correo }) {
 }
 
 export async function eliminarJugador(id) {
+  // Bug fix: antes de borrar al jugador, borramos sus puntuaciones asociadas.
+  // Sin esto, las filas de puntuación quedaban huérfanas (mostrando "—" en
+  // Jugador/Videojuego) porque el registro de puntuación seguía existiendo
+  // con un id_jugador que ya no correspondía a nadie.
+  const movimientos = await obtenerMovimientos();
+  const puntuacionesDelJugador = movimientos.filter(
+    (m) => (m.jugadorId ?? m.id_jugador) === id
+  );
+  for (const m of puntuacionesDelJugador) {
+    await eliminarPuntuacion(m.id);
+  }
+
   const res = await apiFetch(`/jugadores/${id}`, {
     method: 'DELETE',
   });

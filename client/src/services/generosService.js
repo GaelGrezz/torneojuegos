@@ -53,7 +53,7 @@ export async function modificarGenero(id, { nombre }) {
     return { success: false, error: 'El nuevo nombre del género no puede estar vacío.' };
   }
 
-  const res = await apiFetch(/generos/, {
+  const res = await apiFetch(`/generos/${id}`, {
     method: 'PUT',
     body: JSON.stringify({ nombre: nombreLimpio.toLowerCase() }),
   });
@@ -78,7 +78,7 @@ export async function modificarGenero(id, { nombre }) {
 }
 
 export async function eliminarGenero(id) {
-  const res = await apiFetch(/generos/, {
+  const res = await apiFetch(`/generos/${id}`, {
     method: 'DELETE',
   });
 

@@ -33,6 +33,12 @@ export async function initJuegosUI(onDataChanged) {
     const id_genero = document.getElementById('game-genero-select').value;
     const imagen = document.getElementById('game-imagen').value;
 
+    if (!id_genero) {
+      formError.textContent = 'Debes seleccionar un género para el juego.';
+      formError.classList.remove('hidden');
+      return;
+    }
+
     let res;
     if (editandoJuegoId) {
       res = await modificarJuego(editandoJuegoId, { nombre, id_genero, imagen });
@@ -68,7 +74,7 @@ async function poblarSelectorGeneros(selectedId = null) {
     )
     .join('');
 
-  select.innerHTML = `<option value="">-- Seleccionar género (opcional) --</option>${options}`;
+  select.innerHTML = `<option value="">-- Seleccionar género --</option>${options}`;
 }
 
 export async function updateJuegosUI() {
@@ -105,7 +111,19 @@ export async function updateJuegosUI() {
 
   container.innerHTML = `<div class="game-grid">${gridHtml}</div>`;
 
-  // Listener para ver ranking
+  // Click en cualquier parte de la tarjeta abre el ranking.
+  // Los botones internos (editar/eliminar/ver ranking) hacen stopPropagation,
+  // así que no disparan este listener por accidente.
+  container.querySelectorAll('.game-card').forEach((card) => {
+    card.style.cursor = 'pointer';
+    card.addEventListener('click', () => {
+      const gameId = Number(card.getAttribute('data-game-id'));
+      const juego = juegos.find((j) => j.id === gameId);
+      if (juego) showGameRankingModal(juego);
+    });
+  });
+
+  // Listener para ver ranking (se mantiene por si se prefiere el link explícito)
   container.querySelectorAll('.btn-view-ranking').forEach((btn) => {
     btn.addEventListener('click', (e) => {
       e.stopPropagation();
