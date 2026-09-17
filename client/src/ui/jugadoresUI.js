@@ -1,4 +1,4 @@
-import { obtenerJugadores, crearJugador } from '../services/jugadoresService.js';
+import { obtenerJugadores, crearJugador, buscarJugadores } from '../services/jugadoresService.js';
 import { obtenerJuegos } from '../services/videojuegosService.js';
 import {
   obtenerRegistros,
@@ -47,6 +47,13 @@ export async function updateJugadoresUI() {
   const container = document.getElementById('players-table-container');
   if (!container) return;
 
+  // RF07: si hay término de búsqueda, se consulta MySQL vía la API.
+  const termino = busquedaFiltro.trim();
+  if (termino) {
+    await renderBusquedaJugadores(container, termino);
+    return;
+  }
+
   let jugadores;
   let juegos;
   let registros;
@@ -79,17 +86,7 @@ export async function updateJugadoresUI() {
   });
 
   // Filtrar clasificación por búsqueda
-  const termino = busquedaFiltro.toLowerCase().trim();
-  const clasificacionFiltrada = termino
-    ? clasificacionGlobal.filter((fila) => {
-        const jugador = jugadores.find((j) => j.id === fila.jugadorId);
-        return (
-          jugador &&
-          (jugador.nombre.toLowerCase().includes(termino) ||
-            jugador.gamertag.toLowerCase().includes(termino))
-        );
-      })
-    : clasificacionGlobal;
+  const clasificacionFiltrada = clasificacionGlobal;
 
   if (clasificacionFiltrada.length === 0) {
     container.innerHTML = '<p class="empty-msg">Aún no hay puntuaciones registradas.</p>';
@@ -160,6 +157,58 @@ export async function updateJugadoresUI() {
     td.addEventListener('click', () => {
       const jId = Number(td.getAttribute('data-jugador-id'));
       const jugador = jugadores.find((j) => j.id === jId);
+      if (jugador) {
+        showPlayerDetailModal(jugador);
+      }
+    });
+  });
+}
+
+// RF07: búsqueda de jugadores en MySQL (nombre o gamertag, coincidencia parcial).
+async function renderBusquedaJugadores(container, termino) {
+  container.innerHTML = '<p class="empty-msg">Buscando…</p>';
+
+  let resultados;
+  try {
+    resultados = await buscarJugadores(termino);
+  } catch (err) {
+    container.innerHTML = `<p class="empty-msg">Error al buscar.<br/><small>${escapeHtml(err.message)}</small></p>`;
+    return;
+  }
+
+  if (resultados.length === 0) {
+    container.innerHTML = `<p class="empty-msg">No se encontraron jugadores con "${escapeHtml(termino)}".</p>`;
+    return;
+  }
+
+  const rowsHtml = resultados
+    .map(
+      (j) => `
+        <tr class="fila-busqueda" data-jugador-id="${j.id}">
+          <td>${escapeHtml(j.nombre)}</td>
+          <td>${escapeHtml(j.gamertag)}</td>
+          <td>${escapeHtml(j.correo)}</td>
+          <td>${escapeHtml(j.fechaRegistro)}</td>
+        </tr>
+      `
+    )
+    .join('');
+
+  container.innerHTML = `
+    <table class="ranking-table full-width">
+      <thead>
+        <tr><th>Jugador</th><th>Gamertag</th><th>Correo</th><th>Fecha de registro</th></tr>
+      </thead>
+      <tbody>
+        ${rowsHtml}
+      </tbody>
+    </table>
+  `;
+
+  container.querySelectorAll('.fila-busqueda').forEach((tr) => {
+    tr.addEventListener('click', () => {
+      const jId = Number(tr.getAttribute('data-jugador-id'));
+      const jugador = resultados.find((j) => j.id === jId);
       if (jugador) {
         showPlayerDetailModal(jugador);
       }

@@ -1,7 +1,11 @@
-import { loadJugadores, crearJugador as crearJugadorApi } from './store.js';
+import { loadJugadores, crearJugador as crearJugadorApi, buscarJugadores as buscarJugadoresApi } from './store.js';
 
 export async function obtenerJugadores() {
   return loadJugadores();
+}
+
+export async function buscarJugadores(criterio) {
+  return buscarJugadoresApi(criterio);
 }
 
 // RF01: nombre, gamertag y correo obligatorios; gamertag y correo únicos.

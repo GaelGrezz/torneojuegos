@@ -57,6 +57,18 @@ export async function crearJugador({ nombre, gamertag, correo }) {
   });
 }
 
+// RF07: búsqueda por nombre o gamertag (coincidencia parcial en MySQL).
+export async function buscarJugadores(criterio) {
+  const rows = await request(`/jugadores/buscar?criterio=${encodeURIComponent(criterio)}`);
+  return rows.map((r) => ({
+    id: r.ID,
+    nombre: r.NOMBRE,
+    gamertag: r.GAMERTAG,
+    correo: r.CORREO,
+    fechaRegistro: r.FECHA_REGISTRO,
+  }));
+}
+
 // ---- Géneros ----
 
 export async function loadGeneros() {
