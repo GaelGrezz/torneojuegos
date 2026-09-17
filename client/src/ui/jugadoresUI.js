@@ -390,12 +390,12 @@ async function handlePlayerSubmit() {
   if (onDataChangedCallback) onDataChangedCallback();
 }
 
-function openScoreFormModal(onDataChanged) {
+async function openScoreFormModal(onDataChanged) {
   const modalScore = document.getElementById('modal-score-form');
   const container = document.getElementById('score-form-body-container');
 
-  const jugadores = obtenerJugadores();
-  const juegos = obtenerJuegos();
+  const jugadores = await obtenerJugadores();
+  const juegos = await obtenerJuegos();
 
   if (jugadores.length === 0 || juegos.length === 0) {
     container.innerHTML = '<p class="empty-msg">Necesitas al menos un jugador y un videojuego registrados.</p>';
@@ -407,8 +407,8 @@ function openScoreFormModal(onDataChanged) {
   selScoreJuegoId = selScoreJuegoId || juegos[0].id;
   tipoOperacionScore = 'incremento';
 
-  function renderBody() {
-    const movimientos = obtenerMovimientos();
+  async function renderBody() {
+    const movimientos = await obtenerMovimientos();
     const puntajeActual = calcularPuntuacionActual(movimientos, Number(selScoreJugadorId), Number(selScoreJuegoId));
     const historial = calcularMovimientosPorPar(movimientos, Number(selScoreJugadorId), Number(selScoreJuegoId));
 
@@ -429,9 +429,9 @@ function openScoreFormModal(onDataChanged) {
     let historialHtml = '';
     if (historial.length > 0) {
       historialHtml = `
-        <h4 style="margin-top: 16px;">Historial de movimientos</h4>
+        <h4 style="margin-top: 16px;">Historial de registros / puntuaciones</h4>
         <table class="mini-table">
-          <thead><tr><th>Fecha</th><th>Cantidad</th></tr></thead>
+          <thead><tr><th>Fecha</th><th>Puntuación</th><th style="text-align: right;">Acciones</th></tr></thead>
           <tbody>
             ${historial
               .map(
@@ -439,7 +439,11 @@ function openScoreFormModal(onDataChanged) {
                 <tr>
                   <td>${escapeHtml(m.fecha)}</td>
                   <td class="${m.delta >= 0 ? 'delta-pos' : 'delta-neg'}">
-                    ${m.delta >= 0 ? '+' : ''}${m.delta}
+                    <strong>${m.puntuacion !== undefined ? m.puntuacion : m.delta}</strong>
+                  </td>
+                  <td style="text-align: right;">
+                    <button type="button" class="btn btn-ghost btn-sm btn-edit-puntuacion" data-id="${m.id}" data-val="${m.puntuacion !== undefined ? m.puntuacion : m.delta}">Editar</button>
+                    <button type="button" class="btn btn-danger-ghost btn-sm btn-del-puntuacion" data-id="${m.id}">Eliminar</button>
                   </td>
                 </tr>
               `
@@ -471,15 +475,15 @@ function openScoreFormModal(onDataChanged) {
           </button>
         </div>
 
-        <label for="score-cantidad">Cantidad</label>
-        <input type="number" min="1" id="score-cantidad" placeholder="Ej. 100" required />
+        <label for="score-cantidad">Cantidad a sumar (≥ 0)</label>
+        <input type="number" min="0" id="score-cantidad" placeholder="Ej. 100" required />
 
         <div id="score-form-msg" class="hidden"></div>
 
         <div class="form-actions">
           <button type="button" class="btn btn-ghost btn-close-modal">Cerrar</button>
           <button type="submit" class="btn btn-primary">
-            ${tipoOperacionScore === 'incremento' ? 'Sumar puntos' : 'Restar puntos'}
+            Guardar puntuación
           </button>
         </div>
 
@@ -512,14 +516,56 @@ function openScoreFormModal(onDataChanged) {
       btnInc.classList.add('active');
     });
 
-    formS?.addEventListener('submit', (e) => {
+    // Eventos de edición y eliminación de puntuación individual
+    container.querySelectorAll('.btn-edit-puntuacion').forEach((btn) => {
+      btn.addEventListener('click', async () => {
+        const id = Number(btn.getAttribute('data-id'));
+        const valActual = btn.getAttribute('data-val');
+        const nuevoVal = prompt('Introduce la nueva puntuación (debe ser mayor o igual a 0):', valActual);
+        if (nuevoVal !== null && nuevoVal.trim() !== '') {
+          const num = Number(nuevoVal.trim());
+          if (isNaN(num) || num < 0) {
+            alert('Error: La puntuación no puede ser negativa ni nula.');
+            return;
+          }
+          const { modificarPuntuacion } = await import('../services/puntuacionesService.js');
+          const res = await modificarPuntuacion(id, num);
+          if (!res.success) {
+            alert(res.error);
+          } else {
+            await updateJugadoresUI();
+            if (onDataChanged) onDataChanged();
+            await renderBody();
+          }
+        }
+      });
+    });
+
+    container.querySelectorAll('.btn-del-puntuacion').forEach((btn) => {
+      btn.addEventListener('click', async () => {
+        const id = Number(btn.getAttribute('data-id'));
+        if (confirm('¿Seguro que deseas eliminar este registro de puntuación?')) {
+          const { eliminarPuntuacion } = await import('../services/puntuacionesService.js');
+          const res = await eliminarPuntuacion(id);
+          if (!res.success) {
+            alert(res.error);
+          } else {
+            await updateJugadoresUI();
+            if (onDataChanged) onDataChanged();
+            await renderBody();
+          }
+        }
+      });
+    });
+
+    formS?.addEventListener('submit', async (e) => {
       e.preventDefault();
       msgDiv.classList.add('hidden');
 
       const cantInput = container.querySelector('#score-cantidad');
       const cantidad = cantInput.value;
 
-      const res = aplicarMovimiento({
+      const res = await aplicarMovimiento({
         jugadorId: Number(selScoreJugadorId),
         juegoId: Number(selScoreJuegoId),
         cantidad: Number(cantidad),
@@ -534,19 +580,19 @@ function openScoreFormModal(onDataChanged) {
       }
 
       msgDiv.className = 'form-msg ok';
-      msgDiv.textContent = `${tipoOperacionScore === 'incremento' ? 'Se sumaron' : 'Se restaron'} ${cantidad} puntos. Nuevo total: ${res.nuevoTotal}.`;
+      msgDiv.textContent = `Puntuación registrada con éxito. Nuevo total: ${res.nuevoTotal}.`;
       msgDiv.classList.remove('hidden');
 
       cantInput.value = '';
 
-      updateJugadoresUI();
+      await updateJugadoresUI();
       if (onDataChanged) onDataChanged();
 
-      renderBody();
+      await renderBody();
     });
   }
 
-  renderBody();
+  await renderBody();
   showModal(modalScore);
 }
 
