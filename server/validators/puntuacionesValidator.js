@@ -17,4 +17,19 @@ const validatePuntuacion = [
   }
 ];
 
-module.exports = { validatePuntuacion };
+const validatePuntuacionUpdate = [
+  body('puntuacion').notEmpty().withMessage('required').bail().isInt().withMessage('integer'),
+  (req, res, next) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      const missing = errors.array().filter((error) => error.msg === 'required');
+      if (missing.length) {
+        return res.status(400).json({ error: `Campos requeridos: ${missing.map((error) => error.path).join(', ')}` });
+      }
+      return res.status(400).json({ error: 'La puntuación debe ser un entero' });
+    }
+    next();
+  }
+];
+
+module.exports = { validatePuntuacion, validatePuntuacionUpdate };

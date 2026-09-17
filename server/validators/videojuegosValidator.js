@@ -2,7 +2,7 @@ const { body, validationResult } = require('express-validator');
 
 const validateVideojuego = [
   body('nombre').notEmpty(),
-  body('genero').notEmpty(),
+  body('id_genero').optional({ values: 'null' }).isInt(),
   (req, res, next) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {

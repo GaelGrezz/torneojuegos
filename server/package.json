@@ -7,8 +7,9 @@
   "type": "commonjs",
   "main": "server.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "node server.js"
+    "test": "jest --config config/jest.config.js",
+    "start": "node server.js",
+    "test:watch": "jest --config config/jest.config.js --watch"
   },
   "dependencies": {
     "cors": "^2.8.6",
@@ -20,6 +21,12 @@
     "sqlite3": "^6.0.1"
   },
   "allowScripts": {
-    "sqlite3@6.0.1": true
+    "sqlite3@6.0.1": true,
+    "@parcel/watcher@2.6.0": true,
+    "unrs-resolver@1.12.2": true
+  },
+  "devDependencies": {
+    "jest": "^30.5.1",
+    "jest-environment-jsdom": "^30.5.1"
   }
 }

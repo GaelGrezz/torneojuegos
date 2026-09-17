@@ -3,6 +3,7 @@ const morgan = require('morgan');
 var cors = require('cors');
 const jugadoresRoutes = require('./routes/jugadores');
 const videojuegosRoutes = require('./routes/videojuegos');
+const generosRoutes = require('./routes/generos');
 const puntuacionesRoutes = require('./routes/puntuaciones');
 const reportesRoutes = require('./routes/reportes');
 
@@ -23,6 +24,7 @@ app.get('/api', (req, res) => {
 
 app.use('/api/jugadores', jugadoresRoutes);
 app.use('/api/videojuegos', videojuegosRoutes);
+app.use('/api/generos', generosRoutes);
 app.use('/api/puntuaciones', puntuacionesRoutes);
 app.use('/api', reportesRoutes);
 
@@ -35,8 +37,11 @@ app.use((err, req, res, next) => {
   res.status(500).json({ error: 'Error interno del servidor' });
 });
 
+try {
 const PORT = process.env.PORT || 3000;
-
-app.listen(PORT, () => {
-  console.log(`Servidor escuchando en http://localhost:${PORT}`);
-});
+  app.listen(PORT, () => {
+    console.log(`Servidor escuchando en http://localhost:${PORT}`);
+  })
+} catch (error) {
+  console.error('Error al iniciar el servidor:', error);
+}
