@@ -1,4 +1,3 @@
-
 -- ============================================================
 -- PROCEDURES: GÉNERO
 -- ============================================================
@@ -408,7 +407,7 @@ DELIMITER ;
  
  
 -- ============================================================
--- PROCEDURES: ESTADÍSTICAS
+-- PROCEDURES: ESTADÍSTICAS (RF08)
 -- ============================================================
 DELIMITER $$
  
@@ -423,4 +422,59 @@ BEGIN
         COALESCE(ROUND((SELECT AVG(`puntuacion`) FROM `puntuacion`), 2), 0.00) AS `puntuacion_promedio`;
 END$$
  
+DELIMITER ;
+
+
+-- ============================================================
+-- PROCEDURES: CLASIFICACIÓN Y BÚSQUEDA (RF06 & RF07)
+-- ============================================================
+DELIMITER $$
+
+-- RF06: Mostrar clasificación ordenada de mayor a menor puntuación por videojuego o general
+DROP PROCEDURE IF EXISTS `sp_mostrar_clasificacion`$$
+CREATE PROCEDURE `sp_mostrar_clasificacion`(
+    IN p_id_videojuego INT UNSIGNED
+)
+BEGIN
+    IF p_id_videojuego IS NOT NULL AND NOT EXISTS (SELECT 1 FROM `videojuego` WHERE `id` = p_id_videojuego) THEN
+        SIGNAL SQLSTATE '45000'
+        SET MESSAGE_TEXT = 'Error RF06: El videojuego especificado no existe.';
+    END IF;
+
+    SELECT 
+        ROW_NUMBER() OVER (ORDER BY p.`puntuacion` DESC) AS `POSICION`,
+        j.`alias` AS `JUGADOR`,
+        v.`nombre` AS `VIDEOJUEGO`,
+        p.`puntuacion` AS `PUNTUACION`,
+        p.`fecha` AS `FECHA`
+    FROM `puntuacion` p
+    INNER JOIN `jugador` j ON p.`id_jugador` = j.`id`
+    INNER JOIN `videojuego` v ON p.`id_videojuego` = v.`id`
+    WHERE (p_id_videojuego IS NULL OR p.`id_videojuego` = p_id_videojuego)
+    ORDER BY p.`puntuacion` DESC;
+END$$
+
+-- RF07: Buscar jugadores por Nombre o Gamertag
+DROP PROCEDURE IF EXISTS `sp_buscar_jugadores`$$
+CREATE PROCEDURE `sp_buscar_jugadores`(
+    IN p_criterio VARCHAR(100)
+)
+BEGIN
+    IF p_criterio IS NULL OR TRIM(p_criterio) = '' THEN
+        SIGNAL SQLSTATE '45000'
+        SET MESSAGE_TEXT = 'Error RF07: Debe proporcionar un término de búsqueda (Nombre o Gamertag).';
+    END IF;
+
+    SELECT 
+        `id` AS `ID`,
+        `nombre` AS `NOMBRE`,
+        `alias` AS `GAMERTAG`,
+        `correo` AS `CORREO`,
+        `fecha_registro` AS `FECHA_REGISTRO`
+    FROM `jugador`
+    WHERE `nombre` LIKE CONCAT('%', TRIM(p_criterio), '%')
+       OR `alias` LIKE CONCAT('%', TRIM(p_criterio), '%')
+    ORDER BY `nombre` ASC;
+END$$
+
 DELIMITER ;

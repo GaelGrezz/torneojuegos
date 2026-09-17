@@ -1,7 +1,7 @@
 # Guía de Arquitectura y Procedimientos Almacenados en MySQL
 ## Sistema de Torneo de Videojuegos y Puntuaciones
 
-Este documento describe la arquitectura de base de datos normalizada y proporciona los ejemplos de uso (`CALL`) para todos los procedimientos almacenados (CRUD completo) definidos en `tables.sql` y `procedures.sql`.
+Este documento describe la arquitectura de base de datos normalizada y proporciona los ejemplos de uso (`CALL`) para todos los procedimientos almacenados (CRUD completo y consultas especializadas) definidos en `tables.sql` y `procedures.sql`.
 
 ---
 
@@ -18,7 +18,7 @@ Se aplicó un proceso de **normalización (3FN)** sobre la estructura inicial:
 
 ---
 
-## 2. Guía de Ejecución y Ejemplos de Procedimientos (CRUD)
+## 2. Guía de Ejecución y Ejemplos de Procedimientos (CRUD y Reportes)
 
 ### 2.1. Gestión de Géneros (`genero`)
 
@@ -69,8 +69,12 @@ CALL sp_eliminar_videojuego(3);
 CALL sp_registrar_jugador('Enrique Herrera', 'Enkrid', 'enrique@correo.com');
 CALL sp_registrar_jugador('Carlos López', 'DevKing', 'carlos@correo.com');
 
--- [READ] Consultar todos los jugadores
+-- [READ] Consultar todos los jugadores (RF04)
 CALL sp_consultar_jugadores();
+
+-- [SEARCH] Buscar jugador por Nombre o Gamertag (RF07)
+CALL sp_buscar_jugadores('Enkrid');
+CALL sp_buscar_jugadores('Carlos');
 
 -- [UPDATE] Modificar información de un jugador
 CALL sp_modificar_jugador(1, 'Enrique H.', 'Enkrid_Pro', 'enrique_nuevo@correo.com');
@@ -81,16 +85,23 @@ CALL sp_eliminar_jugador(2);
 
 ---
 
-### 2.4. Gestión de Puntuaciones (`puntuacion`)
+### 2.4. Gestión de Puntuaciones y Clasificación (`puntuacion`)
 
 ```sql
 -- [CREATE] Registrar puntuación
 -- Parámetros: (ID_Jugador, ID_Videojuego, Puntuacion)
 CALL sp_registrar_puntuacion(1, 1, 1500);
-CALL sp_registrar_puntuacion(1, 2, 5000);
+CALL sp_registrar_puntuacion(2, 1, 2300);
 
--- [READ] Consultar tabla general de puntuaciones con nombres de Jugador y Videojuego
+-- [READ] Consultar puntuaciones generales
 CALL sp_consultar_puntuaciones();
+
+-- [LEADERBOARD] Mostrar clasificación ordenada de mayor a menor (RF06)
+-- Clasificación específica para un juego por su ID:
+CALL sp_mostrar_clasificacion(1);
+
+-- Clasificación general (todos los videojuegos):
+CALL sp_mostrar_clasificacion(NULL);
 
 -- [UPDATE] Actualizar el puntaje de un registro
 CALL sp_modificar_puntuacion(1, 1800);
@@ -101,7 +112,7 @@ CALL sp_eliminar_puntuacion(1);
 
 ---
 
-### 2.5. Estadísticas del Sistema (`sp_obtener_estadisticas`)
+### 2.5. Estadísticas del Sistema (RF08)
 
 ```sql
 -- Devuelve total_jugadores, total_generos, total_videojuegos, total_puntuaciones y puntuacion_promedio
@@ -129,4 +140,7 @@ CALL sp_registrar_videojuego('Juego Raro', 999);
 
 -- Error: Puntuación negativa
 CALL sp_registrar_puntuacion(1, 1, -100);
+
+-- Error: Clasificación con juego inexistente
+CALL sp_mostrar_clasificacion(999);
 ```
