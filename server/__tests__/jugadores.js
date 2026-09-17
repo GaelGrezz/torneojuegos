@@ -29,6 +29,19 @@ describe('JugadoresController', () => {
 		expect(response.json).toHaveBeenCalledWith(rows);
 	});
 
+	test('busca jugadores por criterio (RF07)', async () => {
+		const rows = [{ ID: 1, NOMBRE: 'José Roberto', GAMERTAG: 'purefootsoldier', CORREO: 'jrofunsal@gmail.com', FECHA_REGISTRO: '2026-09-17' }];
+		const response = createResponse();
+		const request = { query: { criterio: 'purefoot' } };
+		JugadoresModel.search.mockResolvedValue(rows);
+
+		await JugadoresController.search(request, response);
+
+		expect(JugadoresModel.search).toHaveBeenCalledWith('purefoot');
+		expect(response.status).toHaveBeenCalledWith(200);
+		expect(response.json).toHaveBeenCalledWith(rows);
+	});
+
 	test('crea un jugador y devuelve el primer resultado', async () => {
 		const response = createResponse();
 		const request = {

@@ -172,7 +172,21 @@ async function showGameRankingModal(juego) {
     return;
   }
 
-  const rowsHtml = filas
+  // Deduplicar: una sola fila por (jugador, videojuego) con la puntuación más alta,
+  // y renumerar las posiciones de la clasificación.
+  const mejorPorPar = new Map();
+  filas.forEach((fila) => {
+    const clave = `${String(fila.JUGADOR).toLowerCase()}|${String(fila.VIDEOJUEGO).toLowerCase()}`;
+    if (!mejorPorPar.has(clave) || fila.PUNTUACION > mejorPorPar.get(clave).PUNTUACION) {
+      mejorPorPar.set(clave, fila);
+    }
+  });
+
+  const filasUnicas = Array.from(mejorPorPar.values())
+    .sort((a, b) => b.PUNTUACION - a.PUNTUACION)
+    .map((fila, index) => ({ ...fila, POSICION: index + 1 }));
+
+  const rowsHtml = filasUnicas
     .map((fila, index) => {
       const isFirst = index === 0 ? 'ranking-first' : '';
       return `
