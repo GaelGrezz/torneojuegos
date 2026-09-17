@@ -1,41 +1,30 @@
 import { obtenerJugadores } from '../services/jugadoresService.js';
-import { loadEstadisticas } from '../services/store.js';
+import { obtenerJuegos } from '../services/videojuegosService.js';
 import {
-  obtenerRegistros,
+  obtenerMovimientos,
+  calcularClasificacion,
   calcularTopJugadores,
-  obtenerRegistrosRecientes,
+  obtenerMovimientosRecientes,
 } from '../services/puntuacionesService.js';
 
 export async function updateDashboardUI() {
-  let jugadores = [];
-  let registros = [];
-  let estadisticas = null;
+  const [jugadores, juegos, movimientos] = await Promise.all([
+    obtenerJugadores(),
+    obtenerJuegos(),
+    obtenerMovimientos(),
+  ]);
 
-  try {
-    [jugadores, registros, estadisticas] = await Promise.all([
-      obtenerJugadores(),
-      obtenerRegistros(),
-      loadEstadisticas().catch(() => null),
-    ]);
-  } catch (err) {
-    const body = document.querySelector('.app-content');
-    if (body) {
-      body.insertAdjacentHTML(
-        'afterbegin',
-        `<p class="empty-msg">No se pudo cargar el dashboard.<br/><small>${escapeHtml(err.message)}</small></p>`
-      );
-    }
-    return;
-  }
+  const clasificacion = calcularClasificacion(movimientos);
+  const topJugadores = calcularTopJugadores(movimientos, 5);
+  const actividadReciente = obtenerMovimientosRecientes(movimientos, 6);
 
-  const topJugadores = calcularTopJugadores(registros, 5);
-  const actividadReciente = obtenerRegistrosRecientes(registros, 6);
-
-  // 1. Estadísticas (directo del backend)
-  const totalJugadores = estadisticas?.total_jugadores ?? jugadores.length;
-  const totalJuegos = estadisticas?.total_videojuegos ?? 0;
-  const totalPuntuaciones = estadisticas?.total_puntuaciones ?? registros.length;
-  const promedioGeneral = estadisticas ? estadisticas.puntuacion_promedio : '0.0';
+  // 1. Estadísticas
+  const totalJugadores = jugadores.length;
+  const totalJuegos = juegos.length;
+  const totalPuntuaciones = clasificacion.length;
+  const promedioGeneral = totalPuntuaciones
+    ? (clasificacion.reduce((acc, c) => acc + c.puntaje, 0) / totalPuntuaciones).toFixed(1)
+    : '0.0';
 
   const elJugadores = document.getElementById('stat-total-jugadores');
   const elJuegos = document.getElementById('stat-total-juegos');
@@ -77,19 +66,22 @@ export async function updateDashboardUI() {
   const recentContainer = document.getElementById('dashboard-recent-activity-container');
   if (recentContainer) {
     if (actividadReciente.length === 0) {
-      recentContainer.innerHTML = '<p class="empty-msg">Aún no hay puntuaciones registradas.</p>';
+      recentContainer.innerHTML = '<p class="empty-msg">Aún no hay movimientos registrados.</p>';
     } else {
       const itemsHtml = actividadReciente
         .map((m) => {
           const jugador = jugadores.find((j) => j.id === m.jugadorId);
+          const juego = juegos.find((j) => j.id === m.juegoId);
+          const deltaClass = m.delta >= 0 ? 'delta-pos' : 'delta-neg';
+          const deltaSign = m.delta >= 0 ? '+' : '';
           return `
             <li class="activity-item">
               <div class="activity-info">
-                <span class="activity-jugador">${escapeHtml(jugador?.nombre ?? m.jugadorNombre ?? '—')}</span>
-                <span class="activity-juego">${escapeHtml(m.juegoNombre ?? '—')}</span>
+                <span class="activity-jugador">${escapeHtml(jugador?.nombre ?? '—')}</span>
+                <span class="activity-juego">${escapeHtml(juego?.nombre ?? '—')}</span>
               </div>
               <div class="activity-meta">
-                <span class="delta-pos">${m.puntaje}</span>
+                <span class="${deltaClass}">${deltaSign}${m.delta}</span>
                 <span class="activity-fecha">${escapeHtml(m.fecha)}</span>
               </div>
             </li>

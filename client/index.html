@@ -1,4 +1,4 @@
-<!doctype html>
+﻿<!doctype html>
 <html lang="es">
   <head>
     <meta charset="UTF-8" />
@@ -13,7 +13,7 @@
       <nav class="sidebar">
         <a href="index.html" class="sidebar-tab active" title="Dashboard">
           <span class="sidebar-tab-icon">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
               <rect x="3" y="3" width="7" height="9" rx="1.5" />
               <rect x="14" y="3" width="7" height="5" rx="1.5" />
               <rect x="14" y="12" width="7" height="9" rx="1.5" />
@@ -24,7 +24,7 @@
 
         <a href="videojuegos.html" class="sidebar-tab" title="Videojuegos">
           <span class="sidebar-tab-icon">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
               <path d="M6 9h4M8 7v4" />
               <circle cx="16.5" cy="8.5" r="0.9" fill="currentColor" stroke="none" />
               <circle cx="18.5" cy="10.5" r="0.9" fill="currentColor" stroke="none" />
@@ -35,7 +35,7 @@
 
         <a href="jugadores.html" class="sidebar-tab" title="Jugadores">
           <span class="sidebar-tab-icon">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
               <circle cx="9" cy="8" r="3" />
               <path d="M3.5 20a5.5 5.5 0 0 1 11 0" />
               <path d="M16 8.5a2.8 2.8 0 1 1 0 5.6" />
@@ -81,8 +81,44 @@
               <div id="dashboard-recent-activity-container"></div>
             </div>
           </div>
+
+          <!-- Catálogo de Géneros (movido desde generos.html) -->
+          <div class="dashboard-card" style="margin-top: 24px;">
+            <div class="page-header" style="margin-bottom: 16px;">
+              <div>
+                <h3 class="dashboard-card-title">Catálogo de géneros</h3>
+                <p class="section-subtitle">Gestiona las categorías independientes para los videojuegos</p>
+              </div>
+              <button class="btn btn-primary" id="btn-open-create-genero">+ Crear género</button>
+            </div>
+            <div id="generos-table-container"></div>
+          </div>
         </section>
       </main>
+    </div>
+
+    <!-- Modal de Géneros (movido desde generos.html) -->
+    <div class="modal-overlay hidden" id="modal-genero-form">
+      <div class="modal-box" style="max-width: 420px;">
+        <div class="modal-header">
+          <h2 id="modal-genero-title">Crear género</h2>
+          <button class="modal-close btn-close-modal">✕</button>
+        </div>
+        <div class="modal-body">
+          <form class="form" id="form-genero">
+            <div id="genero-form-error" class="form-error hidden"></div>
+
+            <label for="genero-nombre">Nombre del género</label>
+            <input type="text" id="genero-nombre" placeholder="Ej. battle royale, rpg, deportes..." required />
+            <span class="hint-text">Se guardará automáticamente en minúsculas.</span>
+
+            <div class="form-actions">
+              <button type="button" class="btn btn-ghost btn-close-modal">Cancelar</button>
+              <button type="submit" class="btn btn-primary">Guardar género</button>
+            </div>
+          </form>
+        </div>
+      </div>
     </div>
 
     <!-- Script especifico de la página Dashboard -->

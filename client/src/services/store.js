@@ -1,146 +1,86 @@
-// Cliente delgado sobre la API Express (server). Ya no se usa localStorage
-// ni datos simulados: todo se lee/escribe en MySQL vía los endpoints /api.
-//
-// Contrato consumido (validado por QA):
-//   GET  /api/jugadores        -> [{ID, NOMBRE, GAMERTAG, CORREO, FECHA_REGISTRO}]
-//   POST /api/jugadores        -> {id_registrado, mensaje}
-//   GET  /api/generos          -> [{ID, GENERO}]
-//   POST /api/generos          -> {id_registrado, mensaje}
-//   GET  /api/videojuegos      -> [{ID, VIDEOJUEGO, GENERO}]
-//   POST /api/videojuegos      -> {id_registrado, mensaje}
-//   GET  /api/puntuaciones     -> [{ID, JUGADOR, GAMERTAG, VIDEOJUEGO, PUNTUACION, FECHA}]
-//   POST /api/puntuaciones     -> {id_registrado, mensaje}
-//   PUT  /api/puntuaciones/:id -> {mensaje}
-//   GET  /api/clasificacion    -> [{POSICION, JUGADOR, VIDEOJUEGO, PUNTUACION, FECHA}]
-//   GET  /api/estadisticas     -> {total_jugadores, total_generos, total_videojuegos,
-//                                   total_puntuaciones, puntuacion_promedio}
+const DEFAULT_JUGADORES = [
+  { id: 1, nombre: 'Juan Pérez', gamertag: 'JuanP', correo: 'juan.perez@mail.com', fechaRegistro: '2024-01-10' },
+  { id: 2, nombre: 'Ana Gómez', gamertag: 'AnaG', correo: 'ana.gomez@mail.com', fechaRegistro: '2024-02-15' },
+  { id: 3, nombre: 'Luis Torres', gamertag: 'LuisT', correo: 'luis.torres@mail.com', fechaRegistro: '2024-03-01' },
+];
 
-const API_BASE_URL = 'http://localhost:3000/api';
+const DEFAULT_GENEROS = [
+  { id: 1, nombre: 'battle royale' },
+  { id: 2, nombre: 'shooter táctico' },
+  { id: 3, nombre: 'lucha' },
+  { id: 4, nombre: 'carreras' },
+];
 
-async function request(path, options = {}) {
-  const res = await fetch(`${API_BASE_URL}${path}`, {
-    headers: { 'Content-Type': 'application/json', ...(options.headers || {}) },
-    ...options,
-  });
+const DEFAULT_JUEGOS = [
+  {
+    id: 1,
+    nombre: 'Fortnite',
+    id_genero: 1,
+    genero: 'battle royale',
+    imagen: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTnvxdy0mx-LfrpOS5BFe-7Zfwz8G7Ayfxgrgu8kHcHKLQSkOuzXNnIpqM&s=10',
+  },
+  {
+    id: 2,
+    nombre: 'Valorant',
+    id_genero: 2,
+    genero: 'shooter táctico',
+    imagen: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTMpxuEW2vEHL7NS9t5I4jT5OuWUW0p4M4UgTUSyq6wmjxuY7M5u9kUPwFQ&s=10',
+  },
+];
 
-  let body = null;
+const DEFAULT_MOVIMIENTOS = [
+  { id: 1, id_jugador: 1, id_videojuego: 1, puntuacion: 1500, fecha: '2024-03-01' },
+  { id: 2, id_jugador: 1, id_videojuego: 2, puntuacion: 800, fecha: '2024-03-05' },
+  { id: 3, id_jugador: 2, id_videojuego: 1, puntuacion: 2200, fecha: '2024-03-02' },
+  { id: 4, id_jugador: 2, id_videojuego: 2, puntuacion: 950, fecha: '2024-03-06' },
+  { id: 5, id_jugador: 3, id_videojuego: 1, puntuacion: 1100, fecha: '2024-03-03' },
+];
+
+function getItem(key, defaultValue) {
   try {
-    body = await res.json();
+    const saved = localStorage.getItem(key);
+    return saved ? JSON.parse(saved) : defaultValue;
   } catch {
-    body = null;
+    return defaultValue;
   }
+}
 
-  if (!res.ok) {
-    throw new Error(body?.error || `Error ${res.status} al llamar ${path}`);
+function setItem(key, value) {
+  try {
+    localStorage.setItem(key, JSON.stringify(value));
+  } catch (err) {
+    console.error('Error al guardar en localStorage:', err);
   }
-
-  return body;
 }
 
-// ---- Jugadores ----
-
-export async function loadJugadores() {
-  const rows = await request('/jugadores');
-  return rows.map((r) => ({
-    id: r.ID,
-    nombre: r.NOMBRE,
-    gamertag: r.GAMERTAG,
-    correo: r.CORREO,
-    fechaRegistro: r.FECHA_REGISTRO,
-  }));
+export function loadGenerosStore() {
+  return getItem('torneojuegos_generos', DEFAULT_GENEROS);
 }
 
-export async function crearJugador({ nombre, gamertag, correo }) {
-  return request('/jugadores', {
-    method: 'POST',
-    body: JSON.stringify({ nombre, alias: gamertag, correo }),
-  });
+export function saveGenerosStore(data) {
+  setItem('torneojuegos_generos', data);
 }
 
-// RF07: búsqueda por nombre o gamertag (coincidencia parcial en MySQL).
-export async function buscarJugadores(criterio) {
-  const rows = await request(`/jugadores/buscar?criterio=${encodeURIComponent(criterio)}`);
-  return rows.map((r) => ({
-    id: r.ID,
-    nombre: r.NOMBRE,
-    gamertag: r.GAMERTAG,
-    correo: r.CORREO,
-    fechaRegistro: r.FECHA_REGISTRO,
-  }));
+export function loadJugadoresStore() {
+  return getItem('torneojuegos_jugadores', DEFAULT_JUGADORES);
 }
 
-// ---- Géneros ----
-
-export async function loadGeneros() {
-  const rows = await request('/generos');
-  return rows.map((r) => ({ id: r.ID, nombre: r.GENERO }));
+export function saveJugadoresStore(data) {
+  setItem('torneojuegos_jugadores', data);
 }
 
-export async function crearGenero({ nombre }) {
-  return request('/generos', {
-    method: 'POST',
-    body: JSON.stringify({ nombre }),
-  });
+export function loadJuegosStore() {
+  return getItem('torneojuegos_juegos', DEFAULT_JUEGOS);
 }
 
-// ---- Videojuegos ----
-
-export async function loadVideojuegos() {
-  const rows = await request('/videojuegos');
-  return rows.map((r) => ({
-    id: r.ID,
-    nombre: r.VIDEOJUEGO,
-    genero: r.GENERO,
-    imagen: null,
-  }));
+export function saveJuegosStore(data) {
+  setItem('torneojuegos_juegos', data);
 }
 
-export async function crearVideojuego({ nombre, idGenero }) {
-  return request('/videojuegos', {
-    method: 'POST',
-    body: JSON.stringify({ nombre, id_genero: idGenero || null }),
-  });
+export function loadMovimientosStore() {
+  return getItem('torneojuegos_movimientos', DEFAULT_MOVIMIENTOS);
 }
 
-// ---- Puntuaciones ----
-
-export async function loadPuntuaciones() {
-  const rows = await request('/puntuaciones');
-  return rows.map((r) => ({
-    id: r.ID,
-    gamertag: r.GAMERTAG,
-    jugadorNombre: r.JUGADOR,
-    videojuegoNombre: r.VIDEOJUEGO,
-    puntaje: r.PUNTUACION,
-    fecha: r.FECHA,
-  }));
-}
-
-export async function crearPuntuacion({ idJugador, idVideojuego, puntuacion }) {
-  return request('/puntuaciones', {
-    method: 'POST',
-    body: JSON.stringify({
-      id_jugador: idJugador,
-      id_videojuego: idVideojuego,
-      puntuacion,
-    }),
-  });
-}
-
-export async function actualizarPuntuacion({ id, puntuacion }) {
-  return request(`/puntuaciones/${id}`, {
-    method: 'PUT',
-    body: JSON.stringify({ puntuacion }),
-  });
-}
-
-// ---- Reportes ----
-
-export function loadClasificacion(idVideojuego) {
-  const query = idVideojuego ? `?id_videojuego=${idVideojuego}` : '';
-  return request(`/clasificacion${query}`);
-}
-
-export function loadEstadisticas() {
-  return request('/estadisticas');
+export function saveMovimientosStore(data) {
+  setItem('torneojuegos_movimientos', data);
 }
