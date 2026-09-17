@@ -262,7 +262,6 @@ async function openPlayerFormModal() {
           </label>
           <input
             type="number"
-            min="0"
             class="checklist-puntaje input-puntaje"
             data-id="${juego.id}"
             placeholder="Puntaje"
@@ -347,6 +346,7 @@ async function handlePlayerSubmit() {
 
   const puntajesIniciales = [];
   let conPuntajeFaltante = false;
+  let conPuntajeNegativo = false;
 
   document.querySelectorAll('#player-games-checklist-container .chk-juego').forEach((chk) => {
     if (chk.checked) {
@@ -356,10 +356,21 @@ async function handlePlayerSubmit() {
       if (pVal === '') {
         conPuntajeFaltante = true;
       } else {
-        puntajesIniciales.push({ juegoId: jId, puntaje: Number(pVal) });
+        const pNum = Number(pVal);
+        if (Number.isNaN(pNum) || pNum < 0) {
+          conPuntajeNegativo = true;
+        } else {
+          puntajesIniciales.push({ juegoId: jId, puntaje: pNum });
+        }
       }
     }
   });
+
+  if (conPuntajeNegativo) {
+    formError.textContent = 'Los puntajes iniciales no pueden ser negativos.';
+    formError.classList.remove('hidden');
+    return;
+  }
 
   if (puntajesIniciales.length === 0 && !conPuntajeFaltante) {
     formError.textContent = 'Debes seleccionar al menos un videojuego y asignarle un puntaje.';
@@ -455,7 +466,7 @@ async function openScoreFormModal(onDataChanged) {
     }
 
     container.innerHTML = `
-      <form class="form" id="form-score">
+      <form class="form" id="form-score" novalidate>
         <label for="select-score-jugador">Jugador</label>
         <select id="select-score-jugador">${optionsJugadores}</select>
 
@@ -476,7 +487,7 @@ async function openScoreFormModal(onDataChanged) {
         </div>
 
         <label for="score-cantidad">Cantidad a sumar (≥ 0)</label>
-        <input type="number" min="0" id="score-cantidad" placeholder="Ej. 100" required />
+        <input type="number" id="score-cantidad" placeholder="Ej. 100" />
 
         <div id="score-form-msg" class="hidden"></div>
 
@@ -563,12 +574,27 @@ async function openScoreFormModal(onDataChanged) {
       msgDiv.classList.add('hidden');
 
       const cantInput = container.querySelector('#score-cantidad');
-      const cantidad = cantInput.value;
+      const cantidadTexto = cantInput.value.trim();
+
+      if (cantidadTexto === '') {
+        msgDiv.className = 'form-msg error';
+        msgDiv.textContent = 'Ingresa un valor para la puntuación.';
+        msgDiv.classList.remove('hidden');
+        return;
+      }
+
+      const cantidadNum = Number(cantidadTexto);
+      if (Number.isNaN(cantidadNum) || cantidadNum < 0) {
+        msgDiv.className = 'form-msg error';
+        msgDiv.textContent = 'La puntuación debe ser un número mayor o igual a 0.';
+        msgDiv.classList.remove('hidden');
+        return;
+      }
 
       const res = await aplicarMovimiento({
         jugadorId: Number(selScoreJugadorId),
         juegoId: Number(selScoreJuegoId),
-        cantidad: Number(cantidad),
+        cantidad: cantidadNum,
         tipo: tipoOperacionScore,
       });
 
