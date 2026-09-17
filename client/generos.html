@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Torneo Videojuegos - Catálogo de Juegos</title>
+    <title>Torneo Videojuegos - Catálogo de Géneros</title>
     <link rel="stylesheet" href="/src/index.css" />
   </head>
   <body>
@@ -22,7 +22,7 @@
           </span>
         </a>
 
-        <a href="videojuegos.html" class="sidebar-tab active" title="Videojuegos">
+        <a href="videojuegos.html" class="sidebar-tab" title="Videojuegos">
           <span class="sidebar-tab-icon">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
               <path d="M6 9h4M8 7v4" />
@@ -33,7 +33,7 @@
           </span>
         </a>
 
-        <a href="generos.html" class="sidebar-tab" title="Géneros">
+        <a href="generos.html" class="sidebar-tab active" title="Géneros">
           <span class="sidebar-tab-icon">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
               <path d="M4 6h16M4 12h10M4 18h14" />
@@ -53,59 +53,47 @@
         </a>
       </nav>
 
-      <!-- Contenido Principal: Página Videojuegos -->
+      <!-- Contenido Principal: Página Géneros -->
       <main class="app-content">
         <section class="page">
           <div class="page-header">
-            <h1>Videojuegos</h1>
-            <button class="btn btn-primary" id="btn-open-create-game">+ Crear juego</button>
+            <div>
+              <h1>Catálogo de Géneros</h1>
+              <p class="section-subtitle">Gestiona las categorías independientes para los videojuegos</p>
+            </div>
+            <button class="btn btn-primary" id="btn-open-create-genero">+ Crear género</button>
           </div>
 
-          <div id="games-grid-container"></div>
+          <div id="generos-table-container"></div>
         </section>
       </main>
     </div>
 
-    <!-- Modales HTML Nativos para Videojuegos -->
-    <div class="modal-overlay hidden" id="modal-game-form">
+    <!-- Modales HTML Nativos para Géneros -->
+    <div class="modal-overlay hidden" id="modal-genero-form">
       <div class="modal-box" style="max-width: 420px;">
         <div class="modal-header">
-          <h2>Crear juego</h2>
+          <h2 id="modal-genero-title">Crear género</h2>
           <button class="modal-close btn-close-modal">✕</button>
         </div>
         <div class="modal-body">
-          <form class="form" id="form-game">
-            <div id="game-form-error" class="form-error hidden"></div>
+          <form class="form" id="form-genero">
+            <div id="genero-form-error" class="form-error hidden"></div>
 
-            <label for="game-nombre">Nombre del juego</label>
-            <input type="text" id="game-nombre" placeholder="Ej. Tekken" required />
-
-            <label for="game-genero">Género</label>
-            <input type="text" id="game-genero" placeholder="Ej. Lucha" required />
-
-            <label for="game-imagen">URL de imagen (opcional)</label>
-            <input type="text" id="game-imagen" placeholder="https://..." />
+            <label for="genero-nombre">Nombre del género</label>
+            <input type="text" id="genero-nombre" placeholder="Ej. battle royale, rpg, deportes..." required />
+            <span class="hint-text">Se guardará automáticamente en minúsculas.</span>
 
             <div class="form-actions">
               <button type="button" class="btn btn-ghost btn-close-modal">Cancelar</button>
-              <button type="submit" class="btn btn-primary">Guardar juego</button>
+              <button type="submit" class="btn btn-primary">Guardar género</button>
             </div>
           </form>
         </div>
       </div>
     </div>
 
-    <div class="modal-overlay hidden" id="modal-game-ranking">
-      <div class="modal-box" style="max-width: 520px;">
-        <div class="modal-header">
-          <h2 id="ranking-modal-title">Clasificación</h2>
-          <button class="modal-close btn-close-modal">✕</button>
-        </div>
-        <div class="modal-body" id="game-ranking-body-container"></div>
-      </div>
-    </div>
-
-    <!-- Script especifico de la página Videojuegos -->
-    <script type="module" src="/src/pages/videojuegos.js"></script>
+    <!-- Script especifico de la página Géneros -->
+    <script type="module" src="/src/pages/generos.js"></script>
   </body>
 </html>
