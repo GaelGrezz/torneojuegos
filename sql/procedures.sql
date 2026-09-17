@@ -352,8 +352,10 @@ CREATE PROCEDURE `sp_consultar_puntuaciones`()
 BEGIN
     SELECT
         p.`id` AS `ID`,
+        j.`id` AS `id_jugador`,
         j.`nombre` AS `JUGADOR`,
         j.`alias` AS `GAMERTAG`,
+        v.`id` AS `id_videojuego`,
         v.`nombre` AS `VIDEOJUEGO`,
         p.`puntuacion` AS `PUNTUACION`,
         p.`fecha` AS `FECHA`
