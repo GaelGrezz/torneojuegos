@@ -199,6 +199,7 @@ async function showGameRankingModal(juego) {
         return `
           <tr class="${isFirst}">
             <td>${index + 1}</td>
+            <td>${escapeHtml(jugador?.nombre ?? '—')}</td>
             <td>${escapeHtml(jugador?.gamertag ?? '—')}</td>
             <td>${fila.puntaje}</td>
           </tr>
@@ -209,7 +210,7 @@ async function showGameRankingModal(juego) {
     rankingContainer.innerHTML = `
       <table class="ranking-table">
         <thead>
-          <tr><th>Posición</th><th>Jugador</th><th>Puntuación</th></tr>
+          <tr><th>Posición</th><th>Jugador</th><th>Gamertag</th><th>Puntuación</th></tr>
         </thead>
         <tbody>
           ${rowsHtml}
