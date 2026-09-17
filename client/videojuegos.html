@@ -72,8 +72,15 @@
             <label for="game-nombre">Nombre del juego</label>
             <input type="text" id="game-nombre" placeholder="Ej. Tekken" required />
 
-            <label for="game-genero">Género</label>
-            <input type="text" id="game-genero" placeholder="Ej. Lucha" required />
+            <label for="game-genero">Género (opcional)</label>
+            <select id="game-genero">
+              <option value="">— Sin género —</option>
+            </select>
+
+            <div id="game-nuevo-genero-wrap" class="hidden">
+              <label for="game-nuevo-genero">Nombre del nuevo género</label>
+              <input type="text" id="game-nuevo-genero" placeholder="Ej. Lucha" />
+            </div>
 
             <label for="game-imagen">URL de imagen (opcional)</label>
             <input type="text" id="game-imagen" placeholder="https://..." />

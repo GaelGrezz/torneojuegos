@@ -1,31 +1,30 @@
 import { obtenerJugadores, crearJugador } from '../services/jugadoresService.js';
 import { obtenerJuegos } from '../services/videojuegosService.js';
 import {
-  obtenerMovimientos,
-  aplicarMovimiento,
+  obtenerRegistros,
+  guardarPuntuacion,
   calcularClasificacionAgrupada,
-  calcularPuntuacionActual,
-  calcularMovimientosPorPar,
+  puntuacionPorPar,
 } from '../services/puntuacionesService.js';
+import { crearPuntuacion } from '../services/store.js';
 import { showModal, hideModal } from './modalsUI.js';
 
 let busquedaFiltro = '';
 let selScoreJugadorId = null;
 let selScoreJuegoId = null;
-let tipoOperacionScore = 'incremento';
 
-export function initJugadoresUI(onDataChanged) {
+export function initJugadoresUI() {
   const searchInput = document.getElementById('search-input');
   const btnCreatePlayer = document.getElementById('btn-open-create-player');
   const btnScoreForm = document.getElementById('btn-open-score-form');
 
-  // Search input live filtering
+  // Búsqueda en vivo
   searchInput?.addEventListener('input', (e) => {
     busquedaFiltro = e.target.value;
     updateJugadoresUI();
   });
 
-  // Modal 3: Crear Jugador
+  // Crear jugador
   btnCreatePlayer?.addEventListener('click', () => {
     openPlayerFormModal();
   });
@@ -33,28 +32,38 @@ export function initJugadoresUI(onDataChanged) {
   const formPlayer = document.getElementById('form-player');
   formPlayer?.addEventListener('submit', (e) => {
     e.preventDefault();
-    handleCreatePlayerSubmit(onDataChanged);
+    handleCreatePlayerSubmit();
   });
 
-  // Modal 4: Registrar Puntuación
+  // Registrar puntuación
   btnScoreForm?.addEventListener('click', () => {
-    openScoreFormModal(onDataChanged);
+    openScoreFormModal();
   });
 
   updateJugadoresUI();
 }
 
-export function updateJugadoresUI() {
+export async function updateJugadoresUI() {
   const container = document.getElementById('players-table-container');
   if (!container) return;
 
-  const jugadores = obtenerJugadores();
-  const juegos = obtenerJuegos();
-  const movimientos = obtenerMovimientos();
+  let jugadores;
+  let juegos;
+  let registros;
+  try {
+    [jugadores, juegos, registros] = await Promise.all([
+      obtenerJugadores(),
+      obtenerJuegos(),
+      obtenerRegistros(),
+    ]);
+  } catch (err) {
+    container.innerHTML = `<p class="empty-msg">No se pudo cargar la información.<br/><small>${escapeHtml(err.message)}</small></p>`;
+    return;
+  }
 
-  const clasificacionGlobal = calcularClasificacionAgrupada(movimientos);
+  const clasificacionGlobal = calcularClasificacionAgrupada(registros);
 
-  // Calc posiciones por juego
+  // Posiciones por juego
   const filasPorJuego = {};
   clasificacionGlobal.forEach((fila) => {
     if (!filasPorJuego[fila.juegoId]) filasPorJuego[fila.juegoId] = [];
@@ -69,7 +78,7 @@ export function updateJugadoresUI() {
     });
   });
 
-  // Filtrar clasificacion por búsqueda
+  // Filtrar clasificación por búsqueda
   const termino = busquedaFiltro.toLowerCase().trim();
   const clasificacionFiltrada = termino
     ? clasificacionGlobal.filter((fila) => {
@@ -142,7 +151,6 @@ export function updateJugadoresUI() {
     </table>
   `;
 
-  // Listener para clic en celda de jugador -> abre modal detalle
   container.querySelectorAll('.celda-jugador').forEach((td) => {
     td.addEventListener('click', () => {
       const jId = Number(td.getAttribute('data-jugador-id'));
@@ -154,7 +162,7 @@ export function updateJugadoresUI() {
   });
 }
 
-function openPlayerFormModal() {
+async function openPlayerFormModal() {
   const modalPlayer = document.getElementById('modal-player-form');
   const formPlayer = document.getElementById('form-player');
   const formError = document.getElementById('player-form-error');
@@ -165,10 +173,18 @@ function openPlayerFormModal() {
   formError.classList.add('hidden');
   formError.textContent = '';
 
-  const juegos = obtenerJuegos();
-  const sinJuegos = juegos.length === 0;
+  btnSave.disabled = true;
 
-  if (btnSave) btnSave.disabled = sinJuegos;
+  let juegos;
+  try {
+    juegos = await obtenerJuegos();
+  } catch (err) {
+    checklistContainer.innerHTML = `<p class="form-error" style="padding: 8px 0;">${escapeHtml(err.message)}</p>`;
+    showModal(modalPlayer);
+    return;
+  }
+
+  const sinJuegos = juegos.length === 0;
 
   if (sinJuegos) {
     checklistContainer.innerHTML = `
@@ -177,6 +193,7 @@ function openPlayerFormModal() {
       </p>
     `;
   } else {
+    btnSave.disabled = false;
     const checklistHtml = juegos
       .map(
         (juego) => `
@@ -200,7 +217,6 @@ function openPlayerFormModal() {
 
     checklistContainer.innerHTML = `<div class="juegos-checklist">${checklistHtml}</div>`;
 
-    // Listeners para checkboxes
     checklistContainer.querySelectorAll('.chk-juego').forEach((chk) => {
       chk.addEventListener('change', (e) => {
         const id = e.target.getAttribute('data-id');
@@ -217,7 +233,7 @@ function openPlayerFormModal() {
   showModal(modalPlayer);
 }
 
-function handleCreatePlayerSubmit(onDataChanged) {
+async function handleCreatePlayerSubmit() {
   const modalPlayer = document.getElementById('modal-player-form');
   const formError = document.getElementById('player-form-error');
 
@@ -253,7 +269,7 @@ function handleCreatePlayerSubmit(onDataChanged) {
     return;
   }
 
-  const resJugador = crearJugador({ nombre, gamertag, correo });
+  const resJugador = await crearJugador({ nombre, gamertag, correo });
   if (!resJugador.success) {
     formError.textContent = resJugador.error;
     formError.classList.remove('hidden');
@@ -261,21 +277,39 @@ function handleCreatePlayerSubmit(onDataChanged) {
   }
 
   const nuevoId = resJugador.data.id;
-  puntajesIniciales.forEach(({ juegoId, puntaje }) => {
-    aplicarMovimiento({ jugadorId: nuevoId, juegoId, cantidad: puntaje, tipo: 'incremento' });
-  });
+
+  for (const { juegoId, puntaje } of puntajesIniciales) {
+    try {
+      await crearPuntuacion({ idJugador: nuevoId, idVideojuego: juegoId, puntuacion: puntaje });
+    } catch (err) {
+      formError.textContent = `Jugador creado, pero falló al guardar la puntuación de ${juegoId}: ${err.message}`;
+      formError.classList.remove('hidden');
+      return;
+    }
+  }
 
   hideModal(modalPlayer);
-  updateJugadoresUI();
-  if (onDataChanged) onDataChanged();
+  await updateJugadoresUI();
 }
 
-function openScoreFormModal(onDataChanged) {
+async function openScoreFormModal() {
   const modalScore = document.getElementById('modal-score-form');
   const container = document.getElementById('score-form-body-container');
 
-  const jugadores = obtenerJugadores();
-  const juegos = obtenerJuegos();
+  let jugadores;
+  let juegos;
+  let registros;
+  try {
+    [jugadores, juegos, registros] = await Promise.all([
+      obtenerJugadores(),
+      obtenerJuegos(),
+      obtenerRegistros(),
+    ]);
+  } catch (err) {
+    container.innerHTML = `<p class="empty-msg">Error al cargar datos.<br/><small>${escapeHtml(err.message)}</small></p>`;
+    showModal(modalScore);
+    return;
+  }
 
   if (jugadores.length === 0 || juegos.length === 0) {
     container.innerHTML = '<p class="empty-msg">Necesitas al menos un jugador y un videojuego registrados.</p>';
@@ -285,12 +319,17 @@ function openScoreFormModal(onDataChanged) {
 
   selScoreJugadorId = selScoreJugadorId || jugadores[0].id;
   selScoreJuegoId = selScoreJuegoId || juegos[0].id;
-  tipoOperacionScore = 'incremento';
+
+  const par = puntuacionPorPar(registros);
 
   function renderBody() {
-    const movimientos = obtenerMovimientos();
-    const puntajeActual = calcularPuntuacionActual(movimientos, Number(selScoreJugadorId), Number(selScoreJuegoId));
-    const historial = calcularMovimientosPorPar(movimientos, Number(selScoreJugadorId), Number(selScoreJuegoId));
+    const clave = `${Number(selScoreJugadorId)}-${Number(selScoreJuegoId)}`;
+    const registro = par.get(clave);
+    const puntajeActual = registro?.puntaje ?? 0;
+    const historial = registros
+      .filter((r) => r.jugadorId === Number(selScoreJugadorId) && r.juegoId === Number(selScoreJuegoId))
+      .slice()
+      .sort((a, b) => b.id - a.id);
 
     const optionsJugadores = jugadores
       .map(
@@ -306,29 +345,27 @@ function openScoreFormModal(onDataChanged) {
       )
       .join('');
 
-    let historialHtml = '';
-    if (historial.length > 0) {
-      historialHtml = `
-        <h4 style="margin-top: 16px;">Historial de movimientos</h4>
+    const historialHtml =
+      historial.length > 0
+        ? `
+        <h4 style="margin-top: 16px;">Registros de este jugador en el juego</h4>
         <table class="mini-table">
-          <thead><tr><th>Fecha</th><th>Cantidad</th></tr></thead>
+          <thead><tr><th>Fecha</th><th>Puntuación</th></tr></thead>
           <tbody>
             ${historial
               .map(
                 (m) => `
                 <tr>
                   <td>${escapeHtml(m.fecha)}</td>
-                  <td class="${m.delta >= 0 ? 'delta-pos' : 'delta-neg'}">
-                    ${m.delta >= 0 ? '+' : ''}${m.delta}
-                  </td>
+                  <td>${m.puntaje}</td>
                 </tr>
               `
               )
               .join('')}
           </tbody>
         </table>
-      `;
-    }
+      `
+        : '';
 
     container.innerHTML = `
       <form class="form" id="form-score">
@@ -340,37 +377,22 @@ function openScoreFormModal(onDataChanged) {
 
         <p class="current-score">Puntuación actual: <strong>${puntajeActual}</strong></p>
 
-        <label>Operación</label>
-        <div class="tipo-toggle">
-          <button
-            type="button"
-            class="toggle-btn ${tipoOperacionScore === 'incremento' ? 'active' : ''}"
-            id="btn-op-incremento"
-          >
-            + Incrementar
-          </button>
-        </div>
-
-        <label for="score-cantidad">Cantidad</label>
-        <input type="number" min="1" id="score-cantidad" placeholder="Ej. 100" required />
+        <label for="score-puntuacion">Nueva puntuación</label>
+        <input type="number" min="0" id="score-puntuacion" placeholder="Ej. 100" required />
 
         <div id="score-form-msg" class="hidden"></div>
 
         <div class="form-actions">
           <button type="button" class="btn btn-ghost btn-close-modal">Cerrar</button>
-          <button type="submit" class="btn btn-primary">
-            ${tipoOperacionScore === 'incremento' ? 'Sumar puntos' : 'Restar puntos'}
-          </button>
+          <button type="submit" class="btn btn-primary">Guardar puntuación</button>
         </div>
 
         <div>${historialHtml}</div>
       </form>
     `;
 
-    // Attach listeners for selects
     const selJ = container.querySelector('#select-score-jugador');
     const selG = container.querySelector('#select-score-juego');
-    const btnInc = container.querySelector('#btn-op-incremento');
     const formS = container.querySelector('#form-score');
     const msgDiv = container.querySelector('#score-form-msg');
     const closeBtn = container.querySelector('.btn-close-modal');
@@ -387,23 +409,15 @@ function openScoreFormModal(onDataChanged) {
       renderBody();
     });
 
-    btnInc?.addEventListener('click', () => {
-      tipoOperacionScore = 'incremento';
-      btnInc.classList.add('active');
-    });
-
-    formS?.addEventListener('submit', (e) => {
+    formS?.addEventListener('submit', async (e) => {
       e.preventDefault();
       msgDiv.classList.add('hidden');
 
-      const cantInput = container.querySelector('#score-cantidad');
-      const cantidad = cantInput.value;
-
-      const res = aplicarMovimiento({
+      const puntInput = container.querySelector('#score-puntuacion');
+      const res = await guardarPuntuacion({
         jugadorId: Number(selScoreJugadorId),
         juegoId: Number(selScoreJuegoId),
-        cantidad: Number(cantidad),
-        tipo: tipoOperacionScore,
+        puntaje: Number(puntInput.value),
       });
 
       if (!res.success) {
@@ -414,14 +428,11 @@ function openScoreFormModal(onDataChanged) {
       }
 
       msgDiv.className = 'form-msg ok';
-      msgDiv.textContent = `${tipoOperacionScore === 'incremento' ? 'Se sumaron' : 'Se restaron'} ${cantidad} puntos. Nuevo total: ${res.nuevoTotal}.`;
+      msgDiv.textContent = `Puntuación guardada. Nuevo valor: ${res.nuevoTotal}.`;
       msgDiv.classList.remove('hidden');
+      puntInput.value = '';
 
-      cantInput.value = '';
-
-      updateJugadoresUI();
-      if (onDataChanged) onDataChanged();
-
+      await updateJugadoresUI();
       renderBody();
     });
   }
