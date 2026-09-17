@@ -320,7 +320,7 @@ async function openScoreFormModal() {
   selScoreJugadorId = selScoreJugadorId || jugadores[0].id;
   selScoreJuegoId = selScoreJuegoId || juegos[0].id;
 
-  const par = puntuacionPorPar(registros);
+  let par = puntuacionPorPar(registros);
 
   function renderBody() {
     const clave = `${Number(selScoreJugadorId)}-${Number(selScoreJuegoId)}`;
@@ -427,13 +427,25 @@ async function openScoreFormModal() {
         return;
       }
 
-      msgDiv.className = 'form-msg ok';
-      msgDiv.textContent = `Puntuación guardada. Nuevo valor: ${res.nuevoTotal}.`;
-      msgDiv.classList.remove('hidden');
       puntInput.value = '';
 
       await updateJugadoresUI();
+
+      try {
+        registros = await obtenerRegistros();
+      } catch {
+        // Si falla la recarga, se mantiene la vista con los datos previos
+      }
+      par = puntuacionPorPar(registros);
+
       renderBody();
+
+      const msgOk = document.getElementById('score-form-msg');
+      if (msgOk) {
+        msgOk.className = 'form-msg ok';
+        msgOk.textContent = `Puntuación guardada. Nuevo valor: ${res.nuevoTotal}.`;
+        msgOk.classList.remove('hidden');
+      }
     });
   }
 
