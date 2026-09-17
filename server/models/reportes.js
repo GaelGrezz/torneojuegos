@@ -1,8 +1,8 @@
 const { callProcedure } = require('../routes/helpers');
 
 class ReportesModel {
-  async getClassification() {
-    return callProcedure('sp_consultar_puntuaciones');
+  async getClassification(idVideojuego) {
+    return callProcedure('sp_mostrar_clasificacion', [idVideojuego || null]);
   }
 
   async getStatistics() {

@@ -17,14 +17,14 @@ describe('ReportesController', () => {
   });
 
   test('obtiene la clasificación del reporte', async () => {
-    const request = { query: { videojuego: 'Celeste' } };
+    const request = { query: { id_videojuego: '2' } };
     const response = createResponse();
-    const rows = [{ POSICIÓN: 1, JUGADOR: 'purefootsoldier' }];
+    const rows = [{ POSICION: 1, JUGADOR: 'purefootsoldier' }];
     ReportesModel.getClassification.mockResolvedValue(rows);
 
     await ReportesController.getClassification(request, response);
 
-    expect(ReportesModel.getClassification).toHaveBeenCalledWith('Celeste');
+    expect(ReportesModel.getClassification).toHaveBeenCalledWith(2);
     expect(response.status).toHaveBeenCalledWith(200);
     expect(response.json).toHaveBeenCalledWith(rows);
   });
