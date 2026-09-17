@@ -1,106 +1,66 @@
-import {
-  loadJugadores,
-  loadVideojuegos,
-  loadPuntuaciones,
-  crearPuntuacion,
-  actualizarPuntuacion,
-} from './store.js';
+import { apiFetch } from './api.js';
+import { loadMovimientosStore, saveMovimientosStore } from './store.js';
 
-// Registros de puntuación enriquecidos con los ids de jugador/videojuego.
-// El backend devuelve nombres (JUGADOR/GAMERTAG y VIDEOJUEGO), así que se
-// cruzan con las listas locales (gamertag y nombre de juego son únicos).
-export async function obtenerRegistros() {
-  const [jugadores, juegos, puntuaciones] = await Promise.all([
-    loadJugadores(),
-    loadVideojuegos(),
-    loadPuntuaciones(),
-  ]);
+// Tope máximo permitido para una puntuación. Evita que un input type="number"
+// acepte notación científica (ej. "2e24") u otros valores absurdos que luego
+// se muestran en notación exponencial en la UI.
+export const PUNTUACION_MAX = 1_000_000;
 
-  const jugadorPorGamertag = new Map(jugadores.map((j) => [j.gamertag.toLowerCase(), j]));
-  const juegoPorNombre = new Map(juegos.map((g) => [g.nombre.toLowerCase(), g]));
+export async function obtenerMovimientos() {
+  const res = await apiFetch('/puntuaciones');
+  if (res.success && Array.isArray(res.data)) {
+    const mapeados = res.data.map((row) => ({
+      id: row.ID ?? row.id,
+      jugadorId: row.id_jugador ?? row.jugadorId,
+      juegoId: row.id_videojuego ?? row.juegoId,
+      jugador: row.JUGADOR ?? row.jugador,
+      gamertag: row.GAMERTAG ?? row.alias ?? row.gamertag,
+      videojuego: row.VIDEOJUEGO ?? row.videojuego,
+      puntuacion: Number(row.PUNTUACION ?? row.puntuacion),
+      delta: Number(row.PUNTUACION ?? row.puntuacion ?? row.delta),
+      fecha: row.FECHA ?? row.fecha,
+    }));
+    saveMovimientosStore(mapeados);
+    return mapeados;
+  }
+  return loadMovimientosStore();
+}
 
-  return puntuaciones.map((p) => {
-    const jugador = jugadorPorGamertag.get(String(p.gamertag || '').toLowerCase());
-    const juego = juegoPorNombre.get(String(p.videojuegoNombre || '').toLowerCase());
-    return {
-      id: p.id,
-      jugadorId: jugador?.id ?? null,
-      juegoId: juego?.id ?? null,
-      jugadorNombre: p.jugadorNombre,
-      gamertag: p.gamertag,
-      juegoNombre: p.videojuegoNombre,
-      puntaje: p.puntaje,
-      fecha: p.fecha,
-    };
+export function calcularPuntuacionActual(listaMovimientos, jugadorId, juegoId) {
+  return listaMovimientos
+    .filter((m) => (m.jugadorId === jugadorId || m.id_jugador === jugadorId) && (m.juegoId === juegoId || m.id_videojuego === juegoId))
+    .reduce((acc, m) => acc + (m.delta !== undefined ? m.delta : m.puntuacion), 0);
+}
+
+export function calcularMovimientosPorPar(listaMovimientos, jugadorId, juegoId) {
+  return listaMovimientos
+    .filter((m) => (m.jugadorId === jugadorId || m.id_jugador === jugadorId) && (m.juegoId === juegoId || m.id_videojuego === juegoId))
+    .slice()
+    .sort((a, b) => (a.fecha < b.fecha ? 1 : -1));
+}
+
+// RF06: clasificación (jugador + juego) ordenada de mayor a menor puntuación.
+export function calcularClasificacion(listaMovimientos) {
+  const pares = new Map();
+  listaMovimientos.forEach((m) => {
+    const jId = m.jugadorId ?? m.id_jugador;
+    const gId = m.juegoId ?? m.id_videojuego;
+    const valor = m.puntuacion !== undefined ? m.puntuacion : m.delta;
+    const key = `${jId}-${gId}`;
+    pares.set(key, (pares.get(key) || 0) + valor);
   });
-}
 
-export async function obtenerPuntuaciones() {
-  return loadPuntuaciones();
-}
-
-// Puntuación vigente por par (jugador, videojuego): el registro más reciente.
-export function puntuacionPorPar(registros) {
-  const par = new Map(); // key `${jugadorId}-${juegoId}` -> registro
-  registros.forEach((r) => {
-    if (r.jugadorId == null || r.juegoId == null) return;
-    const key = `${r.jugadorId}-${r.juegoId}`;
-    const actual = par.get(key);
-    if (!actual || r.id > actual.id) par.set(key, r);
-  });
-  return par;
-}
-
-// RF03 + RF05: guarda una puntuación absoluta. Si ya existe un registro para
-// el par (jugador, videojuego) se actualiza (PUT); si no, se crea (POST).
-export async function guardarPuntuacion({ jugadorId, juegoId, puntaje }) {
-  const valor = Number(puntaje);
-
-  if (!jugadorId || !juegoId) {
-    return { success: false, error: 'Selecciona un jugador y un videojuego.' };
-  }
-  if (Number.isNaN(valor) || valor < 0) {
-    return { success: false, error: 'La puntuación debe ser un número mayor o igual a 0.' };
-  }
-
-  try {
-    const registros = await obtenerRegistros();
-    const par = puntuacionPorPar(registros.filter((r) => r.jugadorId === jugadorId && r.juegoId === juegoId));
-
-    let resultado;
-    const parKey = `${jugadorId}-${juegoId}`;
-    if (par.has(parKey)) {
-      resultado = await actualizarPuntuacion({ id: par.get(parKey).id, puntuacion: valor });
-    } else {
-      resultado = await crearPuntuacion({ idJugador: jugadorId, idVideojuego: juegoId, puntuacion: valor });
-    }
-
-    return { success: true, data: resultado, nuevoTotal: valor };
-  } catch (err) {
-    return { success: false, error: err.message };
-  }
-}
-
-// Clasificación (jugador + juego) ordenada de mayor a menor puntuación.
-export function calcularClasificacion(registros) {
-  const par = puntuacionPorPar(registros);
-  return Array.from(par.values())
-    .map((r) => ({
-      id: r.id,
-      jugadorId: r.jugadorId,
-      juegoId: r.juegoId,
-      jugadorNombre: r.jugadorNombre,
-      gamertag: r.gamertag,
-      juegoNombre: r.juegoNombre,
-      puntaje: r.puntaje,
-      fecha: r.fecha,
-    }))
+  return Array.from(pares.entries())
+    .map(([key, puntaje]) => {
+      const [jugadorId, juegoId] = key.split('-').map(Number);
+      return { jugadorId, juegoId, puntaje };
+    })
     .sort((a, b) => b.puntaje - a.puntaje);
 }
 
 // Variante para la tabla de Jugadores: agrupa las filas por jugador.
-export function calcularClasificacionAgrupada(registros) {
-  const pares = calcularClasificacion(registros);
+export function calcularClasificacionAgrupada(listaMovimientos) {
+  const pares = calcularClasificacion(listaMovimientos);
 
   const totalPorJugador = new Map();
   pares.forEach((p) => {
@@ -123,10 +83,12 @@ export function calcularClasificacionAgrupada(registros) {
 }
 
 // Top N jugadores por puntuación total acumulada.
-export function calcularTopJugadores(registros, cantidad = 5) {
+export function calcularTopJugadores(listaMovimientos, cantidad = 5) {
   const totales = new Map();
-  registros.forEach((r) => {
-    totales.set(r.jugadorId, (totales.get(r.jugadorId) || 0) + r.puntaje);
+  listaMovimientos.forEach((m) => {
+    const jId = m.jugadorId ?? m.id_jugador;
+    const valor = m.puntuacion !== undefined ? m.puntuacion : m.delta;
+    totales.set(jId, (totales.get(jId) || 0) + valor);
   });
 
   return Array.from(totales.entries())
@@ -135,10 +97,121 @@ export function calcularTopJugadores(registros, cantidad = 5) {
     .slice(0, cantidad);
 }
 
-// Últimos N registros (más recientes por id de registro).
-export function obtenerRegistrosRecientes(registros, cantidad = 6) {
-  return registros
+// Últimos N movimientos registrados.
+export function obtenerMovimientosRecientes(listaMovimientos, cantidad = 6) {
+  return listaMovimientos
     .slice()
     .sort((a, b) => b.id - a.id)
     .slice(0, cantidad);
+}
+
+// RF03 + RF05: registrar o aplicar puntuación con validación no negativa
+export async function aplicarMovimiento({ jugadorId, juegoId, cantidad, tipo }) {
+  const valor = Number(cantidad);
+
+  if (!jugadorId || !juegoId) {
+    return { success: false, error: 'Selecciona un jugador y un videojuego.' };
+  }
+  if (Number.isNaN(valor) || valor <= 0) {
+    return { success: false, error: 'La cantidad debe ser un número mayor a 0.' };
+  }
+  if (!Number.isFinite(valor) || valor > PUNTUACION_MAX) {
+    return { success: false, error: `La cantidad no puede superar ${PUNTUACION_MAX.toLocaleString('es-ES')}.` };
+  }
+
+  const movimientos = await obtenerMovimientos();
+  const actual = calcularPuntuacionActual(movimientos, jugadorId, juegoId);
+  const delta = tipo === 'decremento' ? -valor : valor;
+  const nuevoTotal = actual + delta;
+
+  if (nuevoTotal < 0) {
+    return {
+      success: false,
+      error: `Error: La puntuación no puede ser negativa. (El jugador tiene ${actual} puntos).`,
+    };
+  }
+  if (nuevoTotal > PUNTUACION_MAX) {
+    return {
+      success: false,
+      error: `Error: La puntuación total no puede superar ${PUNTUACION_MAX.toLocaleString('es-ES')}. (El jugador tiene ${actual} puntos).`,
+    };
+  }
+
+  // Llamada al backend API para registrar puntuación
+  const res = await apiFetch('/puntuaciones', {
+    method: 'POST',
+    body: JSON.stringify({
+      id_jugador: Number(jugadorId),
+      id_videojuego: Number(juegoId),
+      puntuacion: nuevoTotal,
+    }),
+  });
+
+  const maxId = movimientos.reduce((max, m) => (m.id > max ? m.id : max), 0);
+  const movimientoLocal = {
+    id: res.data?.id_registrado || maxId + 1,
+    jugadorId,
+    id_jugador: jugadorId,
+    juegoId,
+    id_videojuego: juegoId,
+    puntuacion: nuevoTotal,
+    delta,
+    tipo: tipo === 'decremento' ? 'decremento' : 'incremento',
+    fecha: new Date().toISOString().split('T')[0],
+  };
+
+  const actualizados = [...movimientos, movimientoLocal];
+  saveMovimientosStore(actualizados);
+
+  return { success: true, data: movimientoLocal, nuevoTotal };
+}
+
+// Operaciones CRUD adicionales de puntuación directa (sp_modificar_puntuacion y sp_eliminar_puntuacion)
+export async function modificarPuntuacion(id, nuevaPuntuacion) {
+  const valor = Number(nuevaPuntuacion);
+  if (Number.isNaN(valor) || valor < 0) {
+    return { success: false, error: 'Error: La puntuación no puede ser negativa ni nula.' };
+  }
+  if (!Number.isFinite(valor) || valor > PUNTUACION_MAX) {
+    return { success: false, error: `Error: La puntuación no puede superar ${PUNTUACION_MAX.toLocaleString('es-ES')}.` };
+  }
+
+  const res = await apiFetch(`/puntuaciones/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify({ puntuacion: valor }),
+  });
+
+  if (res.success) {
+    await obtenerMovimientos();
+    return { success: true };
+  }
+
+  if (res.networkError) {
+    const movimientos = loadMovimientosStore();
+    const actualizados = movimientos.map((m) => (m.id === id ? { ...m, puntuacion: valor, delta: valor } : m));
+    saveMovimientosStore(actualizados);
+    return { success: true };
+  }
+
+  return { success: false, error: res.error };
+}
+
+export async function eliminarPuntuacion(id) {
+  const res = await apiFetch(`/puntuaciones/${id}`, {
+    method: 'DELETE',
+  });
+
+  if (res.success) {
+    await obtenerMovimientos();
+    return { success: true };
+  }
+
+  if (res.networkError) {
+    const movimientos = loadMovimientosStore();
+    const actualizados = movimientos.filter((m) => m.id !== id);
+    saveMovimientosStore(actualizados);
+    return { success: true };
+  }
+
+  return { success: false, error: res.error };
 }

@@ -5,6 +5,10 @@ class JugadoresModel {
         return callProcedure('sp_consultar_jugadores');
     }
 
+    async search(criterio) {
+        return callProcedure('sp_buscar_jugadores', [criterio]);
+    }
+
     async create(nombre, alias, correo) {
         return callProcedure('sp_registrar_jugador', [nombre, alias, correo]);
     }

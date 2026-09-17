@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+﻿@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
 @import './styles/variables.css';
 @import './App.css';
 @import './styles/dashboard.css';
@@ -19,14 +19,31 @@ body {
 .page { padding: 32px 40px; max-width: 1200px; margin: 0 auto; }
 .page-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 28px; }
 .page-header h1 { font-size: 22px; font-weight: 700; letter-spacing: -0.01em; }
+.section-subtitle { font-size: 13px; color: var(--color-text-muted); margin-top: 4px; }
 .empty-msg { color: var(--color-text-muted); padding: 40px 0; text-align: center; font-size: 14px; }
 
 /* Botones */
 .btn { border: none; border-radius: var(--radius); padding: 10px 18px; font-size: 14px; cursor: pointer; font-weight: 600; transition: background-color .15s ease, color .15s ease, border-color .15s ease; }
+.btn-sm { padding: 6px 12px; font-size: 12px; }
 .btn-primary { background: var(--color-primary); color: #fff; }
 .btn-primary:hover { background: var(--color-primary-hover); }
 .btn-ghost { background: transparent; color: var(--color-text-muted); border: 1px solid var(--color-border); }
 .btn-ghost:hover { color: var(--color-text); border-color: var(--color-text-muted); }
+.btn-danger-ghost { background: transparent; color: var(--color-danger); border: 1px solid rgba(255, 92, 92, 0.3); }
+.btn-danger-ghost:hover { background: rgba(255, 92, 92, 0.15); border-color: var(--color-danger); }
+
+/* Badges */
+.genero-badge {
+  display: inline-block;
+  background: rgba(47, 123, 247, 0.12);
+  color: #70a6ff;
+  border: 1px solid rgba(47, 123, 247, 0.3);
+  padding: 4px 10px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: lowercase;
+}
 
 /* Buscador */
 .search-bar {
@@ -117,14 +134,11 @@ body {
 .form-msg.error { background: rgba(255, 92, 92, 0.1); border: 1px solid rgba(255, 92, 92, 0.4); color: #ff8f8f; }
 
 .hint-text { font-size: 12px; color: var(--color-text-muted); margin: 4px 0 8px; }
-/* Tabla RF06 usada como tabla principal en Jugadores */
 .ranking-table.full-width { margin-top: 4px; }
 
-/* Nombre del jugador clickeable dentro de cualquier tabla */
 .celda-jugador { font-weight: 600; cursor: pointer; color: var(--color-text); }
 .celda-jugador:hover { color: var(--color-primary); }
 
-/* Toggle Incrementar / Decrementar en ScoreFormModal */
 .tipo-toggle { display: flex; gap: 8px; margin-top: 4px; }
 .toggle-btn {
   flex: 1; padding: 10px; border-radius: var(--radius); border: 1px solid var(--color-border);
@@ -136,9 +150,7 @@ body {
 .current-score { font-size: 14px; margin: 12px 0 4px; color: var(--color-text-muted); }
 .current-score strong { color: var(--color-text); font-size: 18px; font-weight: 700; }
 
-/* Colores en el historial de movimientos */
 .delta-pos { color: var(--color-success); font-weight: 600; }
 .delta-neg { color: var(--color-danger); font-weight: 600; }
 
-/* Modal de detalle RF04 */
 .rf04-table { width: 100%; }

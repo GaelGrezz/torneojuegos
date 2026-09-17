@@ -1,4 +1,4 @@
-import { resolve } from 'path';
+﻿import { resolve } from 'path';
 import { defineConfig } from 'vite';
 
 export default defineConfig({
@@ -7,6 +7,7 @@ export default defineConfig({
       input: {
         main: resolve(import.meta.dirname, 'index.html'),
         videojuegos: resolve(import.meta.dirname, 'videojuegos.html'),
+        generos: resolve(import.meta.dirname, 'generos.html'),
         jugadores: resolve(import.meta.dirname, 'jugadores.html'),
       },
     },

@@ -6,6 +6,11 @@ class JugadoresController {
     res.status(200).json(rows);
   }
 
+  async search(req, res) {
+    const rows = await JugadoresModel.search(req.query.criterio);
+    res.status(200).json(rows);
+  }
+
   async create(req, res) {
     const { nombre, alias, correo } = req.body;
     const rows = await JugadoresModel.create(nombre, alias, correo);

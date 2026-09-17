@@ -1,69 +1,88 @@
-import { obtenerJugadores, crearJugador } from '../services/jugadoresService.js';
+import { obtenerJugadores, crearJugador, modificarJugador, eliminarJugador } from '../services/jugadoresService.js';
 import { obtenerJuegos } from '../services/videojuegosService.js';
 import {
-  obtenerRegistros,
-  guardarPuntuacion,
+  obtenerMovimientos,
+  aplicarMovimiento,
   calcularClasificacionAgrupada,
-  puntuacionPorPar,
+  calcularPuntuacionActual,
+  calcularMovimientosPorPar,
 } from '../services/puntuacionesService.js';
-import { crearPuntuacion } from '../services/store.js';
 import { showModal, hideModal } from './modalsUI.js';
 
 let busquedaFiltro = '';
 let selScoreJugadorId = null;
 let selScoreJuegoId = null;
+let tipoOperacionScore = 'incremento';
+let editandoJugadorId = null;
+let onDataChangedCallback = null;
 
-export function initJugadoresUI() {
+export async function initJugadoresUI(onDataChanged) {
+  onDataChangedCallback = onDataChanged;
   const searchInput = document.getElementById('search-input');
   const btnCreatePlayer = document.getElementById('btn-open-create-player');
   const btnScoreForm = document.getElementById('btn-open-score-form');
 
-  // Búsqueda en vivo
+  // Search input live filtering
   searchInput?.addEventListener('input', (e) => {
     busquedaFiltro = e.target.value;
     updateJugadoresUI();
   });
 
-  // Crear jugador
-  btnCreatePlayer?.addEventListener('click', () => {
-    openPlayerFormModal();
+  // Modal: Crear Jugador
+  btnCreatePlayer?.addEventListener('click', async () => {
+    editandoJugadorId = null;
+    await openPlayerFormModal();
   });
 
   const formPlayer = document.getElementById('form-player');
-  formPlayer?.addEventListener('submit', (e) => {
+  formPlayer?.addEventListener('submit', async (e) => {
     e.preventDefault();
-    handleCreatePlayerSubmit();
+    await handlePlayerSubmit();
   });
 
-  // Registrar puntuación
+  // Modal: Registrar Puntuación
   btnScoreForm?.addEventListener('click', () => {
-    openScoreFormModal();
+    openScoreFormModal(onDataChanged);
   });
 
-  updateJugadoresUI();
+  // Listener para botones de modal detalle
+  document.getElementById('btn-edit-player-detail')?.addEventListener('click', () => {
+    const modalDetail = document.getElementById('modal-player-detail');
+    const jugadorId = Number(modalDetail?.getAttribute('data-jugador-id'));
+    hideModal(modalDetail);
+    openEditPlayerModal(jugadorId);
+  });
+
+  document.getElementById('btn-delete-player-detail')?.addEventListener('click', async () => {
+    const modalDetail = document.getElementById('modal-player-detail');
+    const jugadorId = Number(modalDetail?.getAttribute('data-jugador-id'));
+    const jugadorNombre = document.getElementById('detail-player-title')?.textContent || 'el jugador';
+    if (confirm(`¿Seguro que deseas eliminar al jugador "${jugadorNombre}" y todas sus puntuaciones asociadas?`)) {
+      const res = await eliminarJugador(jugadorId);
+      if (!res.success) {
+        alert(res.error);
+      } else {
+        hideModal(modalDetail);
+        await updateJugadoresUI();
+        if (onDataChangedCallback) onDataChangedCallback();
+      }
+    }
+  });
+
+  await updateJugadoresUI();
 }
 
 export async function updateJugadoresUI() {
   const container = document.getElementById('players-table-container');
   if (!container) return;
 
-  let jugadores;
-  let juegos;
-  let registros;
-  try {
-    [jugadores, juegos, registros] = await Promise.all([
-      obtenerJugadores(),
-      obtenerJuegos(),
-      obtenerRegistros(),
-    ]);
-  } catch (err) {
-    container.innerHTML = `<p class="empty-msg">No se pudo cargar la información.<br/><small>${escapeHtml(err.message)}</small></p>`;
-    return;
-  }
+  const jugadores = await obtenerJugadores();
+  const juegos = await obtenerJuegos();
+  const movimientos = await obtenerMovimientos();
 
-  const clasificacionGlobal = calcularClasificacionAgrupada(registros);
+  const clasificacionGlobal = calcularClasificacionAgrupada(movimientos);
 
-  // Posiciones por juego
+  // Calc posiciones por juego
   const filasPorJuego = {};
   clasificacionGlobal.forEach((fila) => {
     if (!filasPorJuego[fila.juegoId]) filasPorJuego[fila.juegoId] = [];
@@ -78,7 +97,7 @@ export async function updateJugadoresUI() {
     });
   });
 
-  // Filtrar clasificación por búsqueda
+  // Filtrar clasificacion por búsqueda
   const termino = busquedaFiltro.toLowerCase().trim();
   const clasificacionFiltrada = termino
     ? clasificacionGlobal.filter((fila) => {
@@ -92,7 +111,50 @@ export async function updateJugadoresUI() {
     : clasificacionGlobal;
 
   if (clasificacionFiltrada.length === 0) {
-    container.innerHTML = '<p class="empty-msg">Aún no hay puntuaciones registradas.</p>';
+    // Si no hay puntuaciones pero sí hay jugadores registrados, mostrar los jugadores
+    if (jugadores.length > 0) {
+      const filtrados = termino
+        ? jugadores.filter((j) => j.nombre.toLowerCase().includes(termino) || j.gamertag.toLowerCase().includes(termino))
+        : jugadores;
+
+      if (filtrados.length === 0) {
+        container.innerHTML = '<p class="empty-msg">No se encontraron jugadores que coincidan con la búsqueda.</p>';
+        return;
+      }
+
+      const rows = filtrados
+        .map(
+          (j) => `
+          <tr>
+            <td class="celda-jugador" data-jugador-id="${j.id}"><strong>${escapeHtml(j.nombre)}</strong></td>
+            <td>${escapeHtml(j.gamertag)}</td>
+            <td>${escapeHtml(j.correo)}</td>
+            <td><button class="btn btn-ghost btn-sm btn-view-player-det" data-jugador-id="${j.id}">Ver detalle / Opciones</button></td>
+          </tr>
+        `
+        )
+        .join('');
+
+      container.innerHTML = `
+        <table class="ranking-table full-width">
+          <thead>
+            <tr><th>Jugador</th><th>Gamertag</th><th>Correo</th><th>Acción</th></tr>
+          </thead>
+          <tbody>${rows}</tbody>
+        </table>
+      `;
+
+      container.querySelectorAll('.celda-jugador, .btn-view-player-det').forEach((el) => {
+        el.addEventListener('click', () => {
+          const jId = Number(el.getAttribute('data-jugador-id'));
+          const j = jugadores.find((item) => item.id === jId);
+          if (j) showPlayerDetailModal(j);
+        });
+      });
+      return;
+    }
+
+    container.innerHTML = '<p class="empty-msg">Aún no hay jugadores registrados. Crea el primero con "+ Crear jugador".</p>';
     return;
   }
 
@@ -126,7 +188,10 @@ export async function updateJugadoresUI() {
         .join(' ');
 
       const celdaJugadorHtml = fila.esInicioGrupo
-        ? `<td class="celda-jugador" rowSpan="${conteoPorGrupo[fila.grupoIndex]}" data-jugador-id="${fila.jugadorId}">${escapeHtml(jugador?.nombre ?? '—')}</td>`
+        ? `<td class="celda-jugador" rowSpan="${conteoPorGrupo[fila.grupoIndex]}" data-jugador-id="${fila.jugadorId}">
+            <strong>${escapeHtml(jugador?.nombre ?? '—')}</strong>
+            <span style="font-size: 11px; color: var(--color-text-muted); display: block;">(${escapeHtml(jugador?.gamertag ?? '')}) ⚙</span>
+          </td>`
         : '';
 
       return `
@@ -164,27 +229,21 @@ export async function updateJugadoresUI() {
 
 async function openPlayerFormModal() {
   const modalPlayer = document.getElementById('modal-player-form');
+  const modalTitle = document.getElementById('modal-player-title');
   const formPlayer = document.getElementById('form-player');
   const formError = document.getElementById('player-form-error');
   const checklistContainer = document.getElementById('player-games-checklist-container');
   const btnSave = document.getElementById('btn-save-player');
 
+  if (modalTitle) modalTitle.textContent = 'Crear jugador';
   formPlayer.reset();
   formError.classList.add('hidden');
   formError.textContent = '';
 
-  btnSave.disabled = true;
-
-  let juegos;
-  try {
-    juegos = await obtenerJuegos();
-  } catch (err) {
-    checklistContainer.innerHTML = `<p class="form-error" style="padding: 8px 0;">${escapeHtml(err.message)}</p>`;
-    showModal(modalPlayer);
-    return;
-  }
-
+  const juegos = await obtenerJuegos();
   const sinJuegos = juegos.length === 0;
+
+  if (btnSave) btnSave.disabled = sinJuegos;
 
   if (sinJuegos) {
     checklistContainer.innerHTML = `
@@ -193,7 +252,6 @@ async function openPlayerFormModal() {
       </p>
     `;
   } else {
-    btnSave.disabled = false;
     const checklistHtml = juegos
       .map(
         (juego) => `
@@ -204,7 +262,6 @@ async function openPlayerFormModal() {
           </label>
           <input
             type="number"
-            min="0"
             class="checklist-puntaje input-puntaje"
             data-id="${juego.id}"
             placeholder="Puntaje"
@@ -233,7 +290,39 @@ async function openPlayerFormModal() {
   showModal(modalPlayer);
 }
 
-async function handleCreatePlayerSubmit() {
+async function openEditPlayerModal(jugadorId) {
+  editandoJugadorId = jugadorId;
+  const jugadores = await obtenerJugadores();
+  const jugador = jugadores.find((j) => j.id === jugadorId);
+  if (!jugador) return;
+
+  const modalPlayer = document.getElementById('modal-player-form');
+  const modalTitle = document.getElementById('modal-player-title');
+  const formError = document.getElementById('player-form-error');
+  const checklistContainer = document.getElementById('player-games-checklist-container');
+  const btnSave = document.getElementById('btn-save-player');
+
+  if (modalTitle) modalTitle.textContent = 'Editar jugador';
+  formError.classList.add('hidden');
+  formError.textContent = '';
+  if (btnSave) btnSave.disabled = false;
+
+  document.getElementById('player-nombre').value = jugador.nombre;
+  document.getElementById('player-gamertag').value = jugador.gamertag;
+  document.getElementById('player-correo').value = jugador.correo;
+
+  if (checklistContainer) {
+    checklistContainer.innerHTML = `
+      <p style="font-size: 12px; color: var(--color-text-muted); padding: 6px 0;">
+        (Las puntuaciones se administran en "Registrar puntuación").
+      </p>
+    `;
+  }
+
+  showModal(modalPlayer);
+}
+
+async function handlePlayerSubmit() {
   const modalPlayer = document.getElementById('modal-player-form');
   const formError = document.getElementById('player-form-error');
 
@@ -241,8 +330,23 @@ async function handleCreatePlayerSubmit() {
   const gamertag = document.getElementById('player-gamertag').value;
   const correo = document.getElementById('player-correo').value;
 
+  if (editandoJugadorId) {
+    const res = await modificarJugador(editandoJugadorId, { nombre, gamertag, correo });
+    if (!res.success) {
+      formError.textContent = res.error;
+      formError.classList.remove('hidden');
+      return;
+    }
+    hideModal(modalPlayer);
+    editandoJugadorId = null;
+    await updateJugadoresUI();
+    if (onDataChangedCallback) onDataChangedCallback();
+    return;
+  }
+
   const puntajesIniciales = [];
   let conPuntajeFaltante = false;
+  let conPuntajeNegativo = false;
 
   document.querySelectorAll('#player-games-checklist-container .chk-juego').forEach((chk) => {
     if (chk.checked) {
@@ -252,10 +356,21 @@ async function handleCreatePlayerSubmit() {
       if (pVal === '') {
         conPuntajeFaltante = true;
       } else {
-        puntajesIniciales.push({ juegoId: jId, puntaje: Number(pVal) });
+        const pNum = Number(pVal);
+        if (Number.isNaN(pNum) || pNum < 0) {
+          conPuntajeNegativo = true;
+        } else {
+          puntajesIniciales.push({ juegoId: jId, puntaje: pNum });
+        }
       }
     }
   });
+
+  if (conPuntajeNegativo) {
+    formError.textContent = 'Los puntajes iniciales no pueden ser negativos.';
+    formError.classList.remove('hidden');
+    return;
+  }
 
   if (puntajesIniciales.length === 0 && !conPuntajeFaltante) {
     formError.textContent = 'Debes seleccionar al menos un videojuego y asignarle un puntaje.';
@@ -276,40 +391,22 @@ async function handleCreatePlayerSubmit() {
     return;
   }
 
-  const nuevoId = resJugador.data.id;
-
+  const nuevoId = resJugador.data.id || resJugador.data.id_registrado;
   for (const { juegoId, puntaje } of puntajesIniciales) {
-    try {
-      await crearPuntuacion({ idJugador: nuevoId, idVideojuego: juegoId, puntuacion: puntaje });
-    } catch (err) {
-      formError.textContent = `Jugador creado, pero falló al guardar la puntuación de ${juegoId}: ${err.message}`;
-      formError.classList.remove('hidden');
-      return;
-    }
+    await aplicarMovimiento({ jugadorId: nuevoId, juegoId, cantidad: puntaje, tipo: 'incremento' });
   }
 
   hideModal(modalPlayer);
   await updateJugadoresUI();
+  if (onDataChangedCallback) onDataChangedCallback();
 }
 
-async function openScoreFormModal() {
+async function openScoreFormModal(onDataChanged) {
   const modalScore = document.getElementById('modal-score-form');
   const container = document.getElementById('score-form-body-container');
 
-  let jugadores;
-  let juegos;
-  let registros;
-  try {
-    [jugadores, juegos, registros] = await Promise.all([
-      obtenerJugadores(),
-      obtenerJuegos(),
-      obtenerRegistros(),
-    ]);
-  } catch (err) {
-    container.innerHTML = `<p class="empty-msg">Error al cargar datos.<br/><small>${escapeHtml(err.message)}</small></p>`;
-    showModal(modalScore);
-    return;
-  }
+  const jugadores = await obtenerJugadores();
+  const juegos = await obtenerJuegos();
 
   if (jugadores.length === 0 || juegos.length === 0) {
     container.innerHTML = '<p class="empty-msg">Necesitas al menos un jugador y un videojuego registrados.</p>';
@@ -319,17 +416,12 @@ async function openScoreFormModal() {
 
   selScoreJugadorId = selScoreJugadorId || jugadores[0].id;
   selScoreJuegoId = selScoreJuegoId || juegos[0].id;
+  tipoOperacionScore = 'incremento';
 
-  let par = puntuacionPorPar(registros);
-
-  function renderBody() {
-    const clave = `${Number(selScoreJugadorId)}-${Number(selScoreJuegoId)}`;
-    const registro = par.get(clave);
-    const puntajeActual = registro?.puntaje ?? 0;
-    const historial = registros
-      .filter((r) => r.jugadorId === Number(selScoreJugadorId) && r.juegoId === Number(selScoreJuegoId))
-      .slice()
-      .sort((a, b) => b.id - a.id);
+  async function renderBody() {
+    const movimientos = await obtenerMovimientos();
+    const puntajeActual = calcularPuntuacionActual(movimientos, Number(selScoreJugadorId), Number(selScoreJuegoId));
+    const historial = calcularMovimientosPorPar(movimientos, Number(selScoreJugadorId), Number(selScoreJuegoId));
 
     const optionsJugadores = jugadores
       .map(
@@ -345,30 +437,36 @@ async function openScoreFormModal() {
       )
       .join('');
 
-    const historialHtml =
-      historial.length > 0
-        ? `
-        <h4 style="margin-top: 16px;">Registros de este jugador en el juego</h4>
+    let historialHtml = '';
+    if (historial.length > 0) {
+      historialHtml = `
+        <h4 style="margin-top: 16px;">Historial de registros / puntuaciones</h4>
         <table class="mini-table">
-          <thead><tr><th>Fecha</th><th>Puntuación</th></tr></thead>
+          <thead><tr><th>Fecha</th><th>Puntuación</th><th style="text-align: right;">Acciones</th></tr></thead>
           <tbody>
             ${historial
               .map(
                 (m) => `
                 <tr>
                   <td>${escapeHtml(m.fecha)}</td>
-                  <td>${m.puntaje}</td>
+                  <td class="${m.delta >= 0 ? 'delta-pos' : 'delta-neg'}">
+                    <strong>${m.puntuacion !== undefined ? m.puntuacion : m.delta}</strong>
+                  </td>
+                  <td style="text-align: right;">
+                    <button type="button" class="btn btn-ghost btn-sm btn-edit-puntuacion" data-id="${m.id}" data-val="${m.puntuacion !== undefined ? m.puntuacion : m.delta}">Editar</button>
+                    <button type="button" class="btn btn-danger-ghost btn-sm btn-del-puntuacion" data-id="${m.id}">Eliminar</button>
+                  </td>
                 </tr>
               `
               )
               .join('')}
           </tbody>
         </table>
-      `
-        : '';
+      `;
+    }
 
     container.innerHTML = `
-      <form class="form" id="form-score">
+      <form class="form" id="form-score" novalidate>
         <label for="select-score-jugador">Jugador</label>
         <select id="select-score-jugador">${optionsJugadores}</select>
 
@@ -377,22 +475,37 @@ async function openScoreFormModal() {
 
         <p class="current-score">Puntuación actual: <strong>${puntajeActual}</strong></p>
 
-        <label for="score-puntuacion">Nueva puntuación</label>
-        <input type="number" min="0" id="score-puntuacion" placeholder="Ej. 100" required />
+        <label>Operación</label>
+        <div class="tipo-toggle">
+          <button
+            type="button"
+            class="toggle-btn ${tipoOperacionScore === 'incremento' ? 'active' : ''}"
+            id="btn-op-incremento"
+          >
+            + Incrementar
+          </button>
+        </div>
+
+        <label for="score-cantidad">Cantidad a sumar (≥ 0)</label>
+        <input type="number" id="score-cantidad" placeholder="Ej. 100" />
 
         <div id="score-form-msg" class="hidden"></div>
 
         <div class="form-actions">
           <button type="button" class="btn btn-ghost btn-close-modal">Cerrar</button>
-          <button type="submit" class="btn btn-primary">Guardar puntuación</button>
+          <button type="submit" class="btn btn-primary">
+            Guardar puntuación
+          </button>
         </div>
 
         <div>${historialHtml}</div>
       </form>
     `;
 
+    // Attach listeners for selects
     const selJ = container.querySelector('#select-score-jugador');
     const selG = container.querySelector('#select-score-juego');
+    const btnInc = container.querySelector('#btn-op-incremento');
     const formS = container.querySelector('#form-score');
     const msgDiv = container.querySelector('#score-form-msg');
     const closeBtn = container.querySelector('.btn-close-modal');
@@ -409,15 +522,80 @@ async function openScoreFormModal() {
       renderBody();
     });
 
+    btnInc?.addEventListener('click', () => {
+      tipoOperacionScore = 'incremento';
+      btnInc.classList.add('active');
+    });
+
+    // Eventos de edición y eliminación de puntuación individual
+    container.querySelectorAll('.btn-edit-puntuacion').forEach((btn) => {
+      btn.addEventListener('click', async () => {
+        const id = Number(btn.getAttribute('data-id'));
+        const valActual = btn.getAttribute('data-val');
+        const nuevoVal = prompt('Introduce la nueva puntuación (debe ser mayor o igual a 0):', valActual);
+        if (nuevoVal !== null && nuevoVal.trim() !== '') {
+          const num = Number(nuevoVal.trim());
+          if (isNaN(num) || num < 0) {
+            alert('Error: La puntuación no puede ser negativa ni nula.');
+            return;
+          }
+          const { modificarPuntuacion } = await import('../services/puntuacionesService.js');
+          const res = await modificarPuntuacion(id, num);
+          if (!res.success) {
+            alert(res.error);
+          } else {
+            await updateJugadoresUI();
+            if (onDataChanged) onDataChanged();
+            await renderBody();
+          }
+        }
+      });
+    });
+
+    container.querySelectorAll('.btn-del-puntuacion').forEach((btn) => {
+      btn.addEventListener('click', async () => {
+        const id = Number(btn.getAttribute('data-id'));
+        if (confirm('¿Seguro que deseas eliminar este registro de puntuación?')) {
+          const { eliminarPuntuacion } = await import('../services/puntuacionesService.js');
+          const res = await eliminarPuntuacion(id);
+          if (!res.success) {
+            alert(res.error);
+          } else {
+            await updateJugadoresUI();
+            if (onDataChanged) onDataChanged();
+            await renderBody();
+          }
+        }
+      });
+    });
+
     formS?.addEventListener('submit', async (e) => {
       e.preventDefault();
       msgDiv.classList.add('hidden');
 
-      const puntInput = container.querySelector('#score-puntuacion');
-      const res = await guardarPuntuacion({
+      const cantInput = container.querySelector('#score-cantidad');
+      const cantidadTexto = cantInput.value.trim();
+
+      if (cantidadTexto === '') {
+        msgDiv.className = 'form-msg error';
+        msgDiv.textContent = 'Ingresa un valor para la puntuación.';
+        msgDiv.classList.remove('hidden');
+        return;
+      }
+
+      const cantidadNum = Number(cantidadTexto);
+      if (Number.isNaN(cantidadNum) || cantidadNum < 0) {
+        msgDiv.className = 'form-msg error';
+        msgDiv.textContent = 'La puntuación debe ser un número mayor o igual a 0.';
+        msgDiv.classList.remove('hidden');
+        return;
+      }
+
+      const res = await aplicarMovimiento({
         jugadorId: Number(selScoreJugadorId),
         juegoId: Number(selScoreJuegoId),
-        puntaje: Number(puntInput.value),
+        cantidad: cantidadNum,
+        tipo: tipoOperacionScore,
       });
 
       if (!res.success) {
@@ -427,29 +605,20 @@ async function openScoreFormModal() {
         return;
       }
 
-      puntInput.value = '';
+      msgDiv.className = 'form-msg ok';
+      msgDiv.textContent = `Puntuación registrada con éxito. Nuevo total: ${res.nuevoTotal}.`;
+      msgDiv.classList.remove('hidden');
+
+      cantInput.value = '';
 
       await updateJugadoresUI();
+      if (onDataChanged) onDataChanged();
 
-      try {
-        registros = await obtenerRegistros();
-      } catch {
-        // Si falla la recarga, se mantiene la vista con los datos previos
-      }
-      par = puntuacionPorPar(registros);
-
-      renderBody();
-
-      const msgOk = document.getElementById('score-form-msg');
-      if (msgOk) {
-        msgOk.className = 'form-msg ok';
-        msgOk.textContent = `Puntuación guardada. Nuevo valor: ${res.nuevoTotal}.`;
-        msgOk.classList.remove('hidden');
-      }
+      await renderBody();
     });
   }
 
-  renderBody();
+  await renderBody();
   showModal(modalScore);
 }
 
@@ -460,6 +629,7 @@ function showPlayerDetailModal(jugador) {
   const mailEl = document.getElementById('detail-player-correo');
   const dateEl = document.getElementById('detail-player-fecha');
 
+  if (modalDetail) modalDetail.setAttribute('data-jugador-id', String(jugador.id));
   if (titleEl) titleEl.textContent = jugador.nombre;
   if (tagEl) tagEl.textContent = jugador.gamertag;
   if (mailEl) mailEl.textContent = jugador.correo;
