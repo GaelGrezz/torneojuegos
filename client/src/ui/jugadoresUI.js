@@ -125,12 +125,17 @@ export async function updateJugadoresUI() {
         .filter(Boolean)
         .join(' ');
 
+      const celdaGamertagHtml = fila.esInicioGrupo
+        ? `<td class="celda-jugador" rowSpan="${conteoPorGrupo[fila.grupoIndex]}" data-jugador-id="${fila.jugadorId}">${escapeHtml(jugador?.gamertag ?? '—')}</td>`
+        : '';
+
       const celdaJugadorHtml = fila.esInicioGrupo
         ? `<td class="celda-jugador" rowSpan="${conteoPorGrupo[fila.grupoIndex]}" data-jugador-id="${fila.jugadorId}">${escapeHtml(jugador?.nombre ?? '—')}</td>`
         : '';
 
       return `
         <tr class="${clasesFila}">
+          ${celdaGamertagHtml}
           ${celdaJugadorHtml}
           <td>${posicionReal}</td>
           <td>${escapeHtml(juego?.nombre ?? '—')}</td>
@@ -143,7 +148,7 @@ export async function updateJugadoresUI() {
   container.innerHTML = `
     <table class="ranking-table full-width">
       <thead>
-        <tr><th>Jugador</th><th>Posición</th><th>Videojuego</th><th>Puntuación</th></tr>
+        <tr><th>Gamertag</th><th>Jugador</th><th>Posición</th><th>Videojuego</th><th>Puntuación</th></tr>
       </thead>
       <tbody>
         ${rowsMarkup}
