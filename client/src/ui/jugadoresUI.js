@@ -1,4 +1,4 @@
-import { obtenerJugadores, crearJugador } from '../services/jugadoresService.js';
+import { obtenerJugadores, crearJugador, modificarJugador, eliminarJugador } from '../services/jugadoresService.js';
 import { obtenerJuegos } from '../services/videojuegosService.js';
 import {
   obtenerMovimientos,
@@ -13,8 +13,11 @@ let busquedaFiltro = '';
 let selScoreJugadorId = null;
 let selScoreJuegoId = null;
 let tipoOperacionScore = 'incremento';
+let editandoJugadorId = null;
+let onDataChangedCallback = null;
 
-export function initJugadoresUI(onDataChanged) {
+export async function initJugadoresUI(onDataChanged) {
+  onDataChangedCallback = onDataChanged;
   const searchInput = document.getElementById('search-input');
   const btnCreatePlayer = document.getElementById('btn-open-create-player');
   const btnScoreForm = document.getElementById('btn-open-score-form');
@@ -25,32 +28,57 @@ export function initJugadoresUI(onDataChanged) {
     updateJugadoresUI();
   });
 
-  // Modal 3: Crear Jugador
-  btnCreatePlayer?.addEventListener('click', () => {
-    openPlayerFormModal();
+  // Modal: Crear Jugador
+  btnCreatePlayer?.addEventListener('click', async () => {
+    editandoJugadorId = null;
+    await openPlayerFormModal();
   });
 
   const formPlayer = document.getElementById('form-player');
-  formPlayer?.addEventListener('submit', (e) => {
+  formPlayer?.addEventListener('submit', async (e) => {
     e.preventDefault();
-    handleCreatePlayerSubmit(onDataChanged);
+    await handlePlayerSubmit();
   });
 
-  // Modal 4: Registrar Puntuación
+  // Modal: Registrar Puntuación
   btnScoreForm?.addEventListener('click', () => {
     openScoreFormModal(onDataChanged);
   });
 
-  updateJugadoresUI();
+  // Listener para botones de modal detalle
+  document.getElementById('btn-edit-player-detail')?.addEventListener('click', () => {
+    const modalDetail = document.getElementById('modal-player-detail');
+    const jugadorId = Number(modalDetail?.getAttribute('data-jugador-id'));
+    hideModal(modalDetail);
+    openEditPlayerModal(jugadorId);
+  });
+
+  document.getElementById('btn-delete-player-detail')?.addEventListener('click', async () => {
+    const modalDetail = document.getElementById('modal-player-detail');
+    const jugadorId = Number(modalDetail?.getAttribute('data-jugador-id'));
+    const jugadorNombre = document.getElementById('detail-player-title')?.textContent || 'el jugador';
+    if (confirm(`¿Seguro que deseas eliminar al jugador "${jugadorNombre}" y todas sus puntuaciones asociadas?`)) {
+      const res = await eliminarJugador(jugadorId);
+      if (!res.success) {
+        alert(res.error);
+      } else {
+        hideModal(modalDetail);
+        await updateJugadoresUI();
+        if (onDataChangedCallback) onDataChangedCallback();
+      }
+    }
+  });
+
+  await updateJugadoresUI();
 }
 
-export function updateJugadoresUI() {
+export async function updateJugadoresUI() {
   const container = document.getElementById('players-table-container');
   if (!container) return;
 
-  const jugadores = obtenerJugadores();
-  const juegos = obtenerJuegos();
-  const movimientos = obtenerMovimientos();
+  const jugadores = await obtenerJugadores();
+  const juegos = await obtenerJuegos();
+  const movimientos = await obtenerMovimientos();
 
   const clasificacionGlobal = calcularClasificacionAgrupada(movimientos);
 
@@ -83,7 +111,50 @@ export function updateJugadoresUI() {
     : clasificacionGlobal;
 
   if (clasificacionFiltrada.length === 0) {
-    container.innerHTML = '<p class="empty-msg">Aún no hay puntuaciones registradas.</p>';
+    // Si no hay puntuaciones pero sí hay jugadores registrados, mostrar los jugadores
+    if (jugadores.length > 0) {
+      const filtrados = termino
+        ? jugadores.filter((j) => j.nombre.toLowerCase().includes(termino) || j.gamertag.toLowerCase().includes(termino))
+        : jugadores;
+
+      if (filtrados.length === 0) {
+        container.innerHTML = '<p class="empty-msg">No se encontraron jugadores que coincidan con la búsqueda.</p>';
+        return;
+      }
+
+      const rows = filtrados
+        .map(
+          (j) => `
+          <tr>
+            <td class="celda-jugador" data-jugador-id="${j.id}"><strong>${escapeHtml(j.nombre)}</strong></td>
+            <td>${escapeHtml(j.gamertag)}</td>
+            <td>${escapeHtml(j.correo)}</td>
+            <td><button class="btn btn-ghost btn-sm btn-view-player-det" data-jugador-id="${j.id}">Ver detalle / Opciones</button></td>
+          </tr>
+        `
+        )
+        .join('');
+
+      container.innerHTML = `
+        <table class="ranking-table full-width">
+          <thead>
+            <tr><th>Jugador</th><th>Gamertag</th><th>Correo</th><th>Acción</th></tr>
+          </thead>
+          <tbody>${rows}</tbody>
+        </table>
+      `;
+
+      container.querySelectorAll('.celda-jugador, .btn-view-player-det').forEach((el) => {
+        el.addEventListener('click', () => {
+          const jId = Number(el.getAttribute('data-jugador-id'));
+          const j = jugadores.find((item) => item.id === jId);
+          if (j) showPlayerDetailModal(j);
+        });
+      });
+      return;
+    }
+
+    container.innerHTML = '<p class="empty-msg">Aún no hay jugadores registrados. Crea el primero con "+ Crear jugador".</p>';
     return;
   }
 
@@ -117,7 +188,10 @@ export function updateJugadoresUI() {
         .join(' ');
 
       const celdaJugadorHtml = fila.esInicioGrupo
-        ? `<td class="celda-jugador" rowSpan="${conteoPorGrupo[fila.grupoIndex]}" data-jugador-id="${fila.jugadorId}">${escapeHtml(jugador?.nombre ?? '—')}</td>`
+        ? `<td class="celda-jugador" rowSpan="${conteoPorGrupo[fila.grupoIndex]}" data-jugador-id="${fila.jugadorId}">
+            <strong>${escapeHtml(jugador?.nombre ?? '—')}</strong>
+            <span style="font-size: 11px; color: var(--color-text-muted); display: block;">(${escapeHtml(jugador?.gamertag ?? '')}) ⚙</span>
+          </td>`
         : '';
 
       return `
@@ -142,7 +216,6 @@ export function updateJugadoresUI() {
     </table>
   `;
 
-  // Listener para clic en celda de jugador -> abre modal detalle
   container.querySelectorAll('.celda-jugador').forEach((td) => {
     td.addEventListener('click', () => {
       const jId = Number(td.getAttribute('data-jugador-id'));
@@ -154,18 +227,20 @@ export function updateJugadoresUI() {
   });
 }
 
-function openPlayerFormModal() {
+async function openPlayerFormModal() {
   const modalPlayer = document.getElementById('modal-player-form');
+  const modalTitle = document.getElementById('modal-player-title');
   const formPlayer = document.getElementById('form-player');
   const formError = document.getElementById('player-form-error');
   const checklistContainer = document.getElementById('player-games-checklist-container');
   const btnSave = document.getElementById('btn-save-player');
 
+  if (modalTitle) modalTitle.textContent = 'Crear jugador';
   formPlayer.reset();
   formError.classList.add('hidden');
   formError.textContent = '';
 
-  const juegos = obtenerJuegos();
+  const juegos = await obtenerJuegos();
   const sinJuegos = juegos.length === 0;
 
   if (btnSave) btnSave.disabled = sinJuegos;
@@ -200,7 +275,6 @@ function openPlayerFormModal() {
 
     checklistContainer.innerHTML = `<div class="juegos-checklist">${checklistHtml}</div>`;
 
-    // Listeners para checkboxes
     checklistContainer.querySelectorAll('.chk-juego').forEach((chk) => {
       chk.addEventListener('change', (e) => {
         const id = e.target.getAttribute('data-id');
@@ -217,13 +291,59 @@ function openPlayerFormModal() {
   showModal(modalPlayer);
 }
 
-function handleCreatePlayerSubmit(onDataChanged) {
+async function openEditPlayerModal(jugadorId) {
+  editandoJugadorId = jugadorId;
+  const jugadores = await obtenerJugadores();
+  const jugador = jugadores.find((j) => j.id === jugadorId);
+  if (!jugador) return;
+
+  const modalPlayer = document.getElementById('modal-player-form');
+  const modalTitle = document.getElementById('modal-player-title');
+  const formError = document.getElementById('player-form-error');
+  const checklistContainer = document.getElementById('player-games-checklist-container');
+  const btnSave = document.getElementById('btn-save-player');
+
+  if (modalTitle) modalTitle.textContent = 'Editar jugador';
+  formError.classList.add('hidden');
+  formError.textContent = '';
+  if (btnSave) btnSave.disabled = false;
+
+  document.getElementById('player-nombre').value = jugador.nombre;
+  document.getElementById('player-gamertag').value = jugador.gamertag;
+  document.getElementById('player-correo').value = jugador.correo;
+
+  if (checklistContainer) {
+    checklistContainer.innerHTML = `
+      <p style="font-size: 12px; color: var(--color-text-muted); padding: 6px 0;">
+        (Las puntuaciones se administran en "Registrar puntuación").
+      </p>
+    `;
+  }
+
+  showModal(modalPlayer);
+}
+
+async function handlePlayerSubmit() {
   const modalPlayer = document.getElementById('modal-player-form');
   const formError = document.getElementById('player-form-error');
 
   const nombre = document.getElementById('player-nombre').value;
   const gamertag = document.getElementById('player-gamertag').value;
   const correo = document.getElementById('player-correo').value;
+
+  if (editandoJugadorId) {
+    const res = await modificarJugador(editandoJugadorId, { nombre, gamertag, correo });
+    if (!res.success) {
+      formError.textContent = res.error;
+      formError.classList.remove('hidden');
+      return;
+    }
+    hideModal(modalPlayer);
+    editandoJugadorId = null;
+    await updateJugadoresUI();
+    if (onDataChangedCallback) onDataChangedCallback();
+    return;
+  }
 
   const puntajesIniciales = [];
   let conPuntajeFaltante = false;
@@ -253,21 +373,21 @@ function handleCreatePlayerSubmit(onDataChanged) {
     return;
   }
 
-  const resJugador = crearJugador({ nombre, gamertag, correo });
+  const resJugador = await crearJugador({ nombre, gamertag, correo });
   if (!resJugador.success) {
     formError.textContent = resJugador.error;
     formError.classList.remove('hidden');
     return;
   }
 
-  const nuevoId = resJugador.data.id;
-  puntajesIniciales.forEach(({ juegoId, puntaje }) => {
-    aplicarMovimiento({ jugadorId: nuevoId, juegoId, cantidad: puntaje, tipo: 'incremento' });
-  });
+  const nuevoId = resJugador.data.id || resJugador.data.id_registrado;
+  for (const { juegoId, puntaje } of puntajesIniciales) {
+    await aplicarMovimiento({ jugadorId: nuevoId, juegoId, cantidad: puntaje, tipo: 'incremento' });
+  }
 
   hideModal(modalPlayer);
-  updateJugadoresUI();
-  if (onDataChanged) onDataChanged();
+  await updateJugadoresUI();
+  if (onDataChangedCallback) onDataChangedCallback();
 }
 
 function openScoreFormModal(onDataChanged) {
@@ -437,6 +557,7 @@ function showPlayerDetailModal(jugador) {
   const mailEl = document.getElementById('detail-player-correo');
   const dateEl = document.getElementById('detail-player-fecha');
 
+  if (modalDetail) modalDetail.setAttribute('data-jugador-id', String(jugador.id));
   if (titleEl) titleEl.textContent = jugador.nombre;
   if (tagEl) tagEl.textContent = jugador.gamertag;
   if (mailEl) mailEl.textContent = jugador.correo;

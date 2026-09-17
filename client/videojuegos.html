@@ -1,4 +1,4 @@
-﻿<!doctype html>
+<!doctype html>
 <html lang="es">
   <head>
     <meta charset="UTF-8" />
@@ -70,7 +70,7 @@
     <div class="modal-overlay hidden" id="modal-game-form">
       <div class="modal-box" style="max-width: 420px;">
         <div class="modal-header">
-          <h2>Crear juego</h2>
+          <h2 id="modal-game-title">Crear juego</h2>
           <button class="modal-close btn-close-modal">✕</button>
         </div>
         <div class="modal-body">
@@ -80,8 +80,10 @@
             <label for="game-nombre">Nombre del juego</label>
             <input type="text" id="game-nombre" placeholder="Ej. Tekken" required />
 
-            <label for="game-genero">Género</label>
-            <input type="text" id="game-genero" placeholder="Ej. Lucha" required />
+            <label for="game-genero-select">Género</label>
+            <select id="game-genero-select">
+              <option value="">-- Seleccionar género --</option>
+            </select>
 
             <label for="game-imagen">URL de imagen (opcional)</label>
             <input type="text" id="game-imagen" placeholder="https://..." />

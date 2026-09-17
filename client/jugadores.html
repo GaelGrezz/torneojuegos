@@ -1,4 +1,4 @@
-﻿<!doctype html>
+<!doctype html>
 <html lang="es">
   <head>
     <meta charset="UTF-8" />
@@ -80,7 +80,7 @@
     <div class="modal-overlay hidden" id="modal-player-form">
       <div class="modal-box" style="max-width: 460px;">
         <div class="modal-header">
-          <h2>Crear jugador</h2>
+          <h2 id="modal-player-title">Crear jugador</h2>
           <button class="modal-close btn-close-modal">✕</button>
         </div>
         <div class="modal-body">
@@ -137,6 +137,10 @@
               </tr>
             </tbody>
           </table>
+          <div class="form-actions" style="margin-top: 18px;">
+            <button type="button" class="btn btn-danger-ghost btn-sm" id="btn-delete-player-detail">Eliminar jugador</button>
+            <button type="button" class="btn btn-primary btn-sm" id="btn-edit-player-detail">Editar datos</button>
+          </div>
         </div>
       </div>
     </div>
