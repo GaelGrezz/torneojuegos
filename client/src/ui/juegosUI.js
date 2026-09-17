@@ -44,7 +44,6 @@ export function initJuegosUI(onDataChanged) {
     const nombre = document.getElementById('game-nombre').value;
     const generoSel = selectGenero.value;
     const generoNuevo = document.getElementById('game-nuevo-genero')?.value || '';
-    const imagen = document.getElementById('game-imagen').value;
 
     // Si se eligió crear un género nuevo, se registra primero en el catálogo.
     if (generoSel === '__nuevo__') {
@@ -60,7 +59,6 @@ export function initJuegosUI(onDataChanged) {
     const res = await crearJuego({
       nombre,
       idGenero: generoSel === '__nuevo__' ? nuevoGeneroId : generoSel ? Number(generoSel) : null,
-      imagen,
     });
 
     if (!res.success) {
