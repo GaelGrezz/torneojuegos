@@ -20,10 +20,37 @@ export async function obtenerMovimientos() {
       delta: Number(row.PUNTUACION ?? row.puntuacion ?? row.delta),
       fecha: row.FECHA ?? row.fecha,
     }));
+
+    if (mapeados.some((m) => m.jugadorId == null || m.juegoId == null)) {
+      await completarIdsPorNombre(mapeados);
+    }
+
     saveMovimientosStore(mapeados);
     return mapeados;
   }
   return loadMovimientosStore();
+}
+
+async function completarIdsPorNombre(mapeados) {
+  const [jRes, vRes] = await Promise.all([apiFetch('/jugadores'), apiFetch('/videojuegos')]);
+  const jugadorPorNombre = new Map();
+  if (jRes.success && Array.isArray(jRes.data)) {
+    jRes.data.forEach((row) => {
+      const nombre = String(row.NOMBRE ?? row.nombre ?? '').toLowerCase();
+      if (nombre) jugadorPorNombre.set(nombre, row.ID ?? row.id);
+    });
+  }
+  const juegoPorNombre = new Map();
+  if (vRes.success && Array.isArray(vRes.data)) {
+    vRes.data.forEach((row) => {
+      const nombre = String(row.VIDEOJUEGO ?? row.nombre ?? '').toLowerCase();
+      if (nombre) juegoPorNombre.set(nombre, row.ID ?? row.id);
+    });
+  }
+  mapeados.forEach((m) => {
+    if (m.jugadorId == null) m.jugadorId = jugadorPorNombre.get(String(m.jugador ?? '').toLowerCase());
+    if (m.juegoId == null) m.juegoId = juegoPorNombre.get(String(m.videojuego ?? '').toLowerCase());
+  });
 }
 
 export function calcularPuntuacionActual(listaMovimientos, jugadorId, juegoId) {
