@@ -1,41 +1,106 @@
-import { loadMovimientosStore, saveMovimientosStore } from './store.js';
+import {
+  loadJugadores,
+  loadVideojuegos,
+  loadPuntuaciones,
+  crearPuntuacion,
+  actualizarPuntuacion,
+} from './store.js';
 
-export function obtenerMovimientos() {
-  return loadMovimientosStore();
-}
+// Registros de puntuación enriquecidos con los ids de jugador/videojuego.
+// El backend devuelve nombres (JUGADOR/GAMERTAG y VIDEOJUEGO), así que se
+// cruzan con las listas locales (gamertag y nombre de juego son únicos).
+export async function obtenerRegistros() {
+  const [jugadores, juegos, puntuaciones] = await Promise.all([
+    loadJugadores(),
+    loadVideojuegos(),
+    loadPuntuaciones(),
+  ]);
 
-export function calcularPuntuacionActual(listaMovimientos, jugadorId, juegoId) {
-  return listaMovimientos
-    .filter((m) => m.jugadorId === jugadorId && m.juegoId === juegoId)
-    .reduce((acc, m) => acc + m.delta, 0);
-}
+  const jugadorPorGamertag = new Map(jugadores.map((j) => [j.gamertag.toLowerCase(), j]));
+  const juegoPorNombre = new Map(juegos.map((g) => [g.nombre.toLowerCase(), g]));
 
-export function calcularMovimientosPorPar(listaMovimientos, jugadorId, juegoId) {
-  return listaMovimientos
-    .filter((m) => m.jugadorId === jugadorId && m.juegoId === juegoId)
-    .slice()
-    .sort((a, b) => (a.fecha < b.fecha ? 1 : -1));
-}
-
-// RF06: clasificación (jugador + juego) ordenada de mayor a menor puntuación.
-export function calcularClasificacion(listaMovimientos) {
-  const pares = new Map();
-  listaMovimientos.forEach((m) => {
-    const key = `${m.jugadorId}-${m.juegoId}`;
-    pares.set(key, (pares.get(key) || 0) + m.delta);
+  return puntuaciones.map((p) => {
+    const jugador = jugadorPorGamertag.get(String(p.gamertag || '').toLowerCase());
+    const juego = juegoPorNombre.get(String(p.videojuegoNombre || '').toLowerCase());
+    return {
+      id: p.id,
+      jugadorId: jugador?.id ?? null,
+      juegoId: juego?.id ?? null,
+      jugadorNombre: p.jugadorNombre,
+      gamertag: p.gamertag,
+      juegoNombre: p.videojuegoNombre,
+      puntaje: p.puntaje,
+      fecha: p.fecha,
+    };
   });
+}
 
-  return Array.from(pares.entries())
-    .map(([key, puntaje]) => {
-      const [jugadorId, juegoId] = key.split('-').map(Number);
-      return { jugadorId, juegoId, puntaje };
-    })
+export async function obtenerPuntuaciones() {
+  return loadPuntuaciones();
+}
+
+// Puntuación vigente por par (jugador, videojuego): el registro más reciente.
+export function puntuacionPorPar(registros) {
+  const par = new Map(); // key `${jugadorId}-${juegoId}` -> registro
+  registros.forEach((r) => {
+    if (r.jugadorId == null || r.juegoId == null) return;
+    const key = `${r.jugadorId}-${r.juegoId}`;
+    const actual = par.get(key);
+    if (!actual || r.id > actual.id) par.set(key, r);
+  });
+  return par;
+}
+
+// RF03 + RF05: guarda una puntuación absoluta. Si ya existe un registro para
+// el par (jugador, videojuego) se actualiza (PUT); si no, se crea (POST).
+export async function guardarPuntuacion({ jugadorId, juegoId, puntaje }) {
+  const valor = Number(puntaje);
+
+  if (!jugadorId || !juegoId) {
+    return { success: false, error: 'Selecciona un jugador y un videojuego.' };
+  }
+  if (Number.isNaN(valor) || valor < 0) {
+    return { success: false, error: 'La puntuación debe ser un número mayor o igual a 0.' };
+  }
+
+  try {
+    const registros = await obtenerRegistros();
+    const par = puntuacionPorPar(registros.filter((r) => r.jugadorId === jugadorId && r.juegoId === juegoId));
+
+    let resultado;
+    const parKey = `${jugadorId}-${juegoId}`;
+    if (par.has(parKey)) {
+      resultado = await actualizarPuntuacion({ id: par.get(parKey).id, puntuacion: valor });
+    } else {
+      resultado = await crearPuntuacion({ idJugador: jugadorId, idVideojuego: juegoId, puntuacion: valor });
+    }
+
+    return { success: true, data: resultado, nuevoTotal: valor };
+  } catch (err) {
+    return { success: false, error: err.message };
+  }
+}
+
+// Clasificación (jugador + juego) ordenada de mayor a menor puntuación.
+export function calcularClasificacion(registros) {
+  const par = puntuacionPorPar(registros);
+  return Array.from(par.values())
+    .map((r) => ({
+      id: r.id,
+      jugadorId: r.jugadorId,
+      juegoId: r.juegoId,
+      jugadorNombre: r.jugadorNombre,
+      gamertag: r.gamertag,
+      juegoNombre: r.juegoNombre,
+      puntaje: r.puntaje,
+      fecha: r.fecha,
+    }))
     .sort((a, b) => b.puntaje - a.puntaje);
 }
 
 // Variante para la tabla de Jugadores: agrupa las filas por jugador.
-export function calcularClasificacionAgrupada(listaMovimientos) {
-  const pares = calcularClasificacion(listaMovimientos);
+export function calcularClasificacionAgrupada(registros) {
+  const pares = calcularClasificacion(registros);
 
   const totalPorJugador = new Map();
   pares.forEach((p) => {
@@ -58,10 +123,10 @@ export function calcularClasificacionAgrupada(listaMovimientos) {
 }
 
 // Top N jugadores por puntuación total acumulada.
-export function calcularTopJugadores(listaMovimientos, cantidad = 5) {
+export function calcularTopJugadores(registros, cantidad = 5) {
   const totales = new Map();
-  listaMovimientos.forEach((m) => {
-    totales.set(m.jugadorId, (totales.get(m.jugadorId) || 0) + m.delta);
+  registros.forEach((r) => {
+    totales.set(r.jugadorId, (totales.get(r.jugadorId) || 0) + r.puntaje);
   });
 
   return Array.from(totales.entries())
@@ -70,49 +135,10 @@ export function calcularTopJugadores(listaMovimientos, cantidad = 5) {
     .slice(0, cantidad);
 }
 
-// Últimos N movimientos registrados.
-export function obtenerMovimientosRecientes(listaMovimientos, cantidad = 6) {
-  return listaMovimientos
+// Últimos N registros (más recientes por id de registro).
+export function obtenerRegistrosRecientes(registros, cantidad = 6) {
+  return registros
     .slice()
     .sort((a, b) => b.id - a.id)
     .slice(0, cantidad);
-}
-
-// RF03 + RF05: aplica un movimiento (incremento o decremento)
-export function aplicarMovimiento({ jugadorId, juegoId, cantidad, tipo }) {
-  const valor = Number(cantidad);
-
-  if (!jugadorId || !juegoId) {
-    return { success: false, error: 'Selecciona un jugador y un videojuego.' };
-  }
-  if (Number.isNaN(valor) || valor <= 0) {
-    return { success: false, error: 'La cantidad debe ser un número mayor a 0.' };
-  }
-
-  const movimientos = obtenerMovimientos();
-  const actual = calcularPuntuacionActual(movimientos, jugadorId, juegoId);
-  const delta = tipo === 'decremento' ? -valor : valor;
-  const nuevoTotal = actual + delta;
-
-  if (nuevoTotal < 0) {
-    return {
-      success: false,
-      error: `No se puede restar ${valor}: el jugador solo tiene ${actual} puntos en este juego.`,
-    };
-  }
-
-  const maxId = movimientos.reduce((max, m) => (m.id > max ? m.id : max), 0);
-  const movimiento = {
-    id: maxId + 1,
-    jugadorId,
-    juegoId,
-    delta,
-    tipo: tipo === 'decremento' ? 'decremento' : 'incremento',
-    fecha: new Date().toISOString().split('T')[0],
-  };
-
-  const actualizados = [...movimientos, movimiento];
-  saveMovimientosStore(actualizados);
-
-  return { success: true, data: movimiento, nuevoTotal };
 }

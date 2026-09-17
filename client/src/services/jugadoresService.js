@@ -1,33 +1,34 @@
-import { loadJugadoresStore, saveJugadoresStore } from './store.js';
+import { loadJugadores, crearJugador as crearJugadorApi } from './store.js';
 
-export function obtenerJugadores() {
-  return loadJugadoresStore();
+export async function obtenerJugadores() {
+  return loadJugadores();
 }
 
-// RF01: nombre, gamertag y correo obligatorios; gamertag único
-export function crearJugador({ nombre, gamertag, correo }) {
+// RF01: nombre, gamertag y correo obligatorios; gamertag y correo únicos.
+export async function crearJugador({ nombre, gamertag, correo }) {
   if (!nombre?.trim() || !gamertag?.trim() || !correo?.trim()) {
     return { success: false, error: 'Nombre, gamertag y correo son obligatorios.' };
   }
 
-  const jugadores = obtenerJugadores();
-  const gamertagLimpio = gamertag.trim();
-  const yaExiste = jugadores.some((j) => j.gamertag.toLowerCase() === gamertagLimpio.toLowerCase());
-  if (yaExiste) {
-    return { success: false, error: `El gamertag "${gamertagLimpio}" ya está en uso.` };
+  try {
+    const data = await crearJugadorApi({
+      nombre: nombre.trim(),
+      gamertag: gamertag.trim(),
+      correo: correo.trim(),
+    });
+    // El backend responde {id_registrado, mensaje}. Reconstruimos el jugador
+    // para que la UI pueda usarlo inmediatamente.
+    return {
+      success: true,
+      data: {
+        id: data.id_registrado,
+        nombre: nombre.trim(),
+        gamertag: gamertag.trim(),
+        correo: correo.trim(),
+        fechaRegistro: new Date().toISOString().split('T')[0],
+      },
+    };
+  } catch (err) {
+    return { success: false, error: err.message };
   }
-
-  const maxId = jugadores.reduce((max, j) => (j.id > max ? j.id : max), 0);
-  const nuevo = {
-    id: maxId + 1,
-    nombre: nombre.trim(),
-    gamertag: gamertagLimpio,
-    correo: correo.trim(),
-    fechaRegistro: new Date().toISOString().split('T')[0],
-  };
-
-  const actualizados = [...jugadores, nuevo];
-  saveJugadoresStore(actualizados);
-
-  return { success: true, data: nuevo };
 }

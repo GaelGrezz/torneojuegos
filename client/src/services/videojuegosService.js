@@ -1,32 +1,50 @@
-import { loadJuegosStore, saveJuegosStore } from './store.js';
+import {
+  loadVideojuegos,
+  loadGeneros,
+  crearGenero as crearGeneroApi,
+  crearVideojuego as crearVideojuegoApi,
+} from './store.js';
 
-export function obtenerJuegos() {
-  return loadJuegosStore();
+export async function obtenerJuegos() {
+  return loadVideojuegos();
 }
 
-// RF02: nombre y género obligatorios; nombre único
-export function crearJuego({ nombre, genero, imagen }) {
-  if (!nombre?.trim() || !genero?.trim()) {
-    return { success: false, error: 'Nombre y género son obligatorios.' };
+export async function obtenerGeneros() {
+  return loadGeneros();
+}
+
+// RF02: nombre obligatorio y único; género opcional (id_genero).
+export async function crearJuego({ nombre, idGenero, imagen }) {
+  if (!nombre?.trim()) {
+    return { success: false, error: 'El nombre del videojuego es obligatorio.' };
   }
 
-  const juegos = obtenerJuegos();
-  const nombreLimpio = nombre.trim();
-  const yaExiste = juegos.some((j) => j.nombre.toLowerCase() === nombreLimpio.toLowerCase());
-  if (yaExiste) {
-    return { success: false, error: `Ya existe un videojuego llamado "${nombreLimpio}".` };
+  try {
+    const data = await crearVideojuegoApi({ nombre: nombre.trim(), idGenero });
+    return {
+      success: true,
+      data: {
+        id: data.id_registrado,
+        nombre: nombre.trim(),
+        idGenero: idGenero || null,
+        imagen: imagen?.trim() || `https://placehold.co/300x400/333/fff?text=${encodeURIComponent(nombre.trim())}`,
+      },
+    };
+  } catch (err) {
+    return { success: false, error: err.message };
+  }
+}
+
+// Crea un género y devuelve su id (para poder usarlo al crear videojuegos).
+export async function crearGenero({ nombre }) {
+  if (!nombre?.trim()) {
+    return { success: false, error: 'El nombre del género es obligatorio.' };
   }
 
-  const maxId = juegos.reduce((max, j) => (j.id > max ? j.id : max), 0);
-  const nuevo = {
-    id: maxId + 1,
-    nombre: nombreLimpio,
-    genero: genero.trim(),
-    imagen: imagen?.trim() || `https://placehold.co/300x400/333/fff?text=${encodeURIComponent(nombreLimpio)}`,
-  };
-
-  const actualizados = [...juegos, nuevo];
-  saveJuegosStore(actualizados);
-
-  return { success: true, data: nuevo };
+  try {
+    const data = await crearGeneroApi({ nombre: nombre.trim() });
+    return { success: true, data: { id: data.id_registrado, nombre: nombre.trim() } };
+  } catch (err) {
+    return { success: false, error: err.message };
+  }
 }
